@@ -7,6 +7,8 @@ import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
+import burp.api.montoya.core.ByteArray;
+import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.operations.OperationCategory;
@@ -43,7 +45,7 @@ public class RandomNumber extends Operation {
     }
 
     @Override
-    protected byte[] perform(byte[] input) throws Exception {
+    protected ByteArray perform(ByteArray input, MessageType messageType) throws Exception {
 
         // get Bounds from user input
         int boundMin = parseInt(this.textFieldMinimum.getText(), 0);
@@ -68,11 +70,11 @@ public class RandomNumber extends Operation {
         if(maxFracDigits == 0) {
             // use int mode
             int randomValue = secRand.nextInt(boundMax - boundMin + 1) + boundMin;
-            return numberFormatter.format(randomValue).getBytes();
+            return factory.createByteArray(numberFormatter.format(randomValue));
         } else {
             // use double mode
             double randomValue = boundMin + (boundMax - boundMin) * secRand.nextDouble();
-            return numberFormatter.format(randomValue).getBytes();
+            return factory.createByteArray(numberFormatter.format(randomValue));
         }
     }
 
@@ -86,10 +88,6 @@ public class RandomNumber extends Operation {
         this.textFieldMaximum = new JTextField();
         this.textFieldMaximum.setText("9999");
         this.addUIElement("Maximum Number", this.textFieldMaximum);
-
-        // use a separator
-        JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
-        this.addUIElement(null, separator);
 
         // fields for formatting: Integer digits
         this.textFieldFormatMinIntDigits = new JTextField();
