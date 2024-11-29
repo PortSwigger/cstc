@@ -1,9 +1,18 @@
-<p>Description:</p>
-<p>With the years we developed a software which provides a GUI which is adapted from the well known CyberChef, providing several small operations which can be chained to conduct a complicated input transformation. The extension eliminates the need of having several plugins for input and output transformations because it is build in a more generic way.</p>
+<p>Imagine GCHQ's CyberChef integrated in BurpSuite with live modification of requests at your fingertips. That's exactly what we had in
+mind when we built the Cyber Security Transformation Chef (CSTC) a few years ago. The CSTC is an extension to the popular
+BurpSuite Proxy built for experts working with web applications. It enables users to define recipes that are applied to outgoing or
+incoming HTTP requests/ responses automatically. Whatever quirks and specialties an application might challenge you with during an
+assessment, the CSTC has you covered. Furthermore, it allows to quickly apply custom formatting to a chosen message, if a more
+detailed analysis is needed.</p>
 
-<p>CSTC is especially useful for using already existing capabilities of Burp Suite Professional (Burp Scanner, Backslash Powered Scanner, ...) on web applications using client side calculated MACs, sequence numbers, or similar protections for request validation. However, CSTC does also perfectly interoperate with other Burp Suite features that are available in the Community Edition (Repeater, Intruder, ...).</p>
+<p>As an example, imagine an API that requires an HMAC appended to all messages derived from datapoints inside the message body.
+With the CSTC you can extract the necessary datapoints with ease and calculate the HMAC on the fly. Together with the CSTCs
+integration into all major BurpSuite components you can now perform automatic intrusion tests with the Scanner, or manual fuzzing
+using Intruder and Repeater, without worrying about the HMAC any longer. Another use case is to extract JWTs from incoming HTTP
+responses and use them in outgoing requests of the Scanner. This eliminates the need to worry about expiring JWTs while scanning.</p>
 
-<p>It is also a great help for analyzing obfuscated HTTP based protocols because it can be used to de- and reobfuscate network traffic passing through the proxy. In this way, the analyst can concentrate on the task of finding vulnerabilities instead of writing a new extension for removing the obfuscation.</p>
+<p>The tool uses a GUI which basic idea is similar to the CyberChef. However, it introduces a new concept which we call lanes. The 
+output of a CSTC transformation is always determined from the the last lane which has an active operation. This initially takes 
+getting used to, but quickly feels intuitive.</p>
 
-<p>Usage:</p>
-<p>The tool uses a GUI which basic idea is similar to the <a href="https://gchq.github.io/CyberChef/">CyberChef</a>. However, it introduces a new concept which we call lanes. The output of a CSTC transformation is always determined from the the last lane which has an active operation. This initially takes getting used to, but quickly feels intuitive. Take a look at our basic tutorial on <a href="https://www.youtube.com/watch?v=BUXvWfb_YWU">YouTube</a> and make sure to read our <a href="https://herolab.usd.de/news-cyber-security-transformation-chef/">initial CSTC blog post</a>.</p>
+<p>Take a look at our basic tutorial on <a href="https://www.youtube.com/watch?v=6fjW4iXj5cg">YouTube</a> or dive into the <a href="https://github.com/usdAG/cstc/blob/master/INTRODUCTION.md">written introduction</a> to the tool.</p>
