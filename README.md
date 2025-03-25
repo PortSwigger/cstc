@@ -1,5 +1,5 @@
 
-*Copyright 2017-2024 usd AG*
+*Copyright 2017-2025 usd AG*
 
 Licensed under the *GNU General Public License, Version 3.0* (the "License"). You may not use this tool except in compliance with the License.
 You may obtain a copy of the License at https://www.gnu.org/licenses/gpl-3.0.html
@@ -91,6 +91,12 @@ Requests and responses pass through the extensions in the order that they are li
 Depending on the extensions in use, it may make sense to adjust the position of the CSTC. If you want to process a request manipulated by the CSTC in another extension,
 the CSTC should be positioned above this extension. Conversely, the CSTC should be positioned below an extension if the CSTC is to work with the response processed by the extension in question.
 Currently the Burp Montoya API doesn't offer a way to change this order automatically, therefore the CSTC cannot influence the interaction with other extensions itself.
+
+### What is the *Formatting* tab in the CSTC about?
+
+The *CSTC Formatting* tab is available in all of Burp's HTTP message editors and shows the result of applying the recipe currently defined in *Formatting* to the content. It has purely a visual effect, the underlying message is not changed. It is intended for testing recipes and for temporarily visualizing changes to the HTTP message using the operations available in the CSTC.
+
+Only the HTTP request message editor in the *Repeater* has an additional tab called *CSTC*. Here, the recipe currently defined in *Outgoing* is applied to the request, making it visible how the request is sent to the server **if** the CSTC is activated for the *Repeater*.
 
 ## Feedback
 
