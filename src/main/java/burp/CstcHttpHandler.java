@@ -29,8 +29,8 @@ public class CstcHttpHandler implements HttpHandler {
     @Override
     public RequestToBeSentAction handleHttpRequestToBeSent(HttpRequestToBeSent requestToBeSent) {
         if(requestToBeSent.toolSource().isFromTool(EXTENSIONS) && requestToBeSent.hasHeader("X-CSTC-79301f837932346cb067c568e27369bf")) {
-            ByteArray request = requestToBeSent.withRemovedHeader("X-CSTC-79301f837932346cb067c568e27369bf").toByteArray();
-            return continueWith(HttpRequest.httpRequest(request).withService(requestToBeSent.httpService()), Annotations.annotations("CSTC"));
+            HttpRequest request = requestToBeSent.withRemovedHeader("X-CSTC-79301f837932346cb067c568e27369bf");
+            return continueWith(request, Annotations.annotations("CSTC"));
         }
 
         if (BurpUtils.getInstance().getFilterState().shouldProcess(FilterState.BurpOperation.OUTGOING, requestToBeSent.toolSource().toolType())) {
