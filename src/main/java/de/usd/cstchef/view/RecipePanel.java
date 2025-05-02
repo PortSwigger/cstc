@@ -35,6 +35,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import org.apache.commons.io.FilenameUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,8 +53,8 @@ import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.persistence.PersistedObject;
-import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.Utils.MessageType;
+import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 import de.usd.cstchef.view.ui.PlaceholderTextField;
@@ -226,9 +229,14 @@ public class RecipePanel extends JPanel implements ChangeListener {
             public void actionPerformed(ActionEvent arg0) {
                 try {
                     JFileChooser fc = new JFileChooser();
+                    FileNameExtensionFilter filter = new FileNameExtensionFilter("CSTC & JSON", "cstc", "json");
+                    fc.setFileFilter(filter);
                     int returnVal = fc.showSaveDialog(RecipePanel.this);
                     if (returnVal == JFileChooser.APPROVE_OPTION) {
                         File file = fc.getSelectedFile();
+                        if(FilenameUtils.getExtension(file.getName()).equals("")) {
+                            file = new File(file.toString() + ".cstc");
+                        }
                         save(file);
                     }
                 } catch (IOException e) {
