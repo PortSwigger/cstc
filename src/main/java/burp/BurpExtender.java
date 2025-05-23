@@ -31,10 +31,22 @@ public class BurpExtender implements BurpExtension {
 
         if (!api.burpSuite().version().edition().equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
             PersistedObject persistence = api.persistence().extensionData();
-            restoreFilterState(persistence);
+            restoreInput(persistence);
             restoreRecipe(persistence);
+            restoreFilterState(persistence);
         }
         view.updateInactiveWarnings();
+    }
+
+    private void restoreInput(PersistedObject persistence) {
+        try {
+            this.view.getFormatRecipePanel().restoreInput(persistence.getString(BurpOperation.FORMAT + "Input"));
+            this.view.getIncomingRecipePanel().restoreInput(persistence.getString(BurpOperation.INCOMING + "Input"));
+            this.view.getOutgoingRecipePanel().restoreInput(persistence.getString(BurpOperation.OUTGOING + "Input"));
+        } catch (Exception e) {
+            Logger.getInstance().log(
+                    "Could not restore the input for one or multiple panels. If this is the first time using CSTC in a project, you can ignore this message.");
+        }
     }
 
     private void restoreRecipe(PersistedObject persistence) {

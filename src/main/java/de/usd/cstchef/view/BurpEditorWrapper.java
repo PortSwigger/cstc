@@ -1,10 +1,14 @@
 package de.usd.cstchef.view;
 
 import java.awt.Component;
+import java.awt.Container;
 import java.util.Optional;
 
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.BadLocationException;
 
 import burp.BurpUtils;
 import burp.CstcMessageEditorController;
@@ -21,20 +25,16 @@ import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 
 public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor, RawEditor{
 
-    private boolean isModified;
-    private boolean editable;
     private BurpOperation operation;
     private MontoyaApi api;
     private boolean fallbackMode;
     private JTextArea fallbackArea;
     private Editor burpEditor;
     private ByteArray lastContent;
-    private RecipePanel recipePanel;
 
-    public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, RecipePanel panel){
+    public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation){
         this.api = BurpUtils.getInstance().getApi();
         this.operation = operation;
-        this.recipePanel = panel;
         this.lastContent = ByteArray.byteArray("");
         if (BurpUtils.inBurp()) {
             switch(operation){
@@ -48,11 +48,38 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             this.fallbackArea = new JTextArea();
             fallbackMode = true;
         }
-    }
 
-    @Override
-    public void setEditable(boolean editable) {
-        this.editable = editable;
+        Component component = burpEditor.uiComponent();
+        JTextArea textArea = findTextAreaComponent(component);
+
+        if(textArea != null) {
+            if (textArea != null) {
+                    textArea.getDocument().addDocumentListener(new DocumentListener() {
+
+                        @Override
+                        public void changedUpdate(DocumentEvent e) {
+                            try {
+                                if(e.getDocument().getLength() > 0) {
+                                    // Save the Editor's input to the Burp State
+                                    api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
+                                }
+                            } catch (BadLocationException e1) {
+                                return;
+                            }
+                        }
+
+                        @Override
+                        public void insertUpdate(DocumentEvent e) {
+                            return;
+                        }
+
+                        @Override
+                        public void removeUpdate(DocumentEvent e) {
+                            return;
+                        }
+                    });
+                }
+        }
     }
 
     @Override
@@ -119,6 +146,12 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
     }
 
     @Override
+    public void setEditable(boolean editable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setEditable'");
+    }
+
+    @Override
     public void setSearchExpression(String expression) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'setSearchExpression'");
@@ -150,5 +183,20 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             return inputScrollPane;
         }
         return burpEditor.uiComponent();
+    }
+
+    /* Find JTextArea of the Editor to attach the DocumentListener to */
+    private JTextArea findTextAreaComponent(Component component) {
+        if (component instanceof JTextArea) {
+            return (JTextArea) component;
+        } else if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                JTextArea result = findTextAreaComponent(child);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+        return null;
     }
 }

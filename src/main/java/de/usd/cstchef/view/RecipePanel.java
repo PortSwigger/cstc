@@ -108,7 +108,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         // create input panel
         JPanel inputPanel = new LayoutPanel("Input");
-        inputText = new BurpEditorWrapper(controllerOrig, operation, this);
+        inputText = new BurpEditorWrapper(controllerOrig, operation);
         inputPanel.add(inputText.uiComponent());
 
         /* 
@@ -120,7 +120,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         // create output panel
         JPanel outputPanel = new LayoutPanel("Output");
-        outputText = new BurpEditorWrapper(controllerMod, operation, this);
+        outputText = new BurpEditorWrapper(controllerMod, operation);
         outputPanel.add(outputText.uiComponent());
 
         outputPanel.setPreferredSize(new Dimension(248, 0));
@@ -488,6 +488,12 @@ public class RecipePanel extends JPanel implements ChangeListener {
         }
         this.inputText.setContents(message);
         this.bake(false);
+    }
+
+    public void restoreInput(String input) {
+        if(input != null) {
+            inputText.setContents(ByteArray.byteArray(input));
+        }
     }
 
     public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
