@@ -405,7 +405,7 @@ public class Utils {
                 StaticString.class, StoreVariable.class, Sub.class, Substring.class, Subtraction.class,
                 Suffix.class, Sum.class, StringContains.class, StringMatch.class, Strip.class,
                 Tiger.class, TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToHex.class,
-                UnixTimestamp.class, UrlDecode.class, UrlEncode.class, Uppercase.class,
+                UnixTimestamp.class, UrlDecode.class, UrlEncode.class, Uppercase.class, UnconditionalJump.class,
                 Whirlpool.class, WriteFile.class,
                 XmlFullSignature.class, XmlMultiSignature.class, Xor.class, XmlSetter.class
         };
