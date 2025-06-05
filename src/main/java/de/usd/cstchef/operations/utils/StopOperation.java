@@ -10,7 +10,6 @@ public class StopOperation extends Operation {
 
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
-        // The stop of the recipe execution is implemented in doBake in RecipePanel
         this.setOperationSkip(10000);
         this.setLaneSkip(10000);
         return input;

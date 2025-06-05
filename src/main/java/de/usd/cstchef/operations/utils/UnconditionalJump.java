@@ -1,10 +1,7 @@
 package de.usd.cstchef.operations.utils;
 
-import javax.swing.JCheckBox;
 import javax.swing.JSpinner;
-import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.event.ChangeListener;
 
 import burp.api.montoya.core.ByteArray;
 import de.usd.cstchef.operations.Operation;
@@ -19,7 +16,6 @@ public class UnconditionalJump extends Operation {
 
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
-        // The stop of the recipe execution is implemented in doBake in RecipePanel
         this.setOperationSkip((int)operations.getValue());
         this.setLaneSkip((int)lanes.getValue());
         return input;
