@@ -108,7 +108,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         // create input panel
         JPanel inputPanel = new LayoutPanel("Input");
-        inputText = new BurpEditorWrapper(controllerOrig, operation);
+        inputText = new BurpEditorWrapper(controllerOrig, operation, true);
         inputPanel.add(inputText.uiComponent());
 
         /* 
@@ -120,7 +120,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         // create output panel
         JPanel outputPanel = new LayoutPanel("Output");
-        outputText = new BurpEditorWrapper(controllerMod, operation);
+        outputText = new BurpEditorWrapper(controllerMod, operation, false);
         outputPanel.add(outputText.uiComponent());
 
         outputPanel.setPreferredSize(new Dimension(248, 0));

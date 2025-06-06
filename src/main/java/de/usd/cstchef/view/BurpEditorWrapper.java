@@ -32,7 +32,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
     private Editor burpEditor;
     private ByteArray lastContent;
 
-    public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation){
+    public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, Boolean isInputEditor){
         this.api = BurpUtils.getInstance().getApi();
         this.operation = operation;
         this.lastContent = ByteArray.byteArray("");
@@ -50,35 +50,33 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
         }
 
         Component component = burpEditor.uiComponent();
-        JTextArea textArea = findTextAreaComponent(component);
+        JTextArea textArea = isInputEditor ? findTextAreaComponent(component) : null;
 
         if(textArea != null) {
-            if (textArea != null) {
-                    textArea.getDocument().addDocumentListener(new DocumentListener() {
+            textArea.getDocument().addDocumentListener(new DocumentListener() {
 
-                        @Override
-                        public void changedUpdate(DocumentEvent e) {
-                            try {
-                                if(e.getDocument().getLength() > 0) {
-                                    // Save the Editor's input to the Burp State
-                                    api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
-                                }
-                            } catch (BadLocationException e1) {
-                                return;
-                            }
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    try {
+                        if(e.getDocument().getLength() > 0) {
+                            // Save the Editor's input to the Burp State
+                            api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
                         }
-
-                        @Override
-                        public void insertUpdate(DocumentEvent e) {
-                            return;
-                        }
-
-                        @Override
-                        public void removeUpdate(DocumentEvent e) {
-                            return;
-                        }
-                    });
+                    } catch (BadLocationException e1) {
+                        return;
+                    }
                 }
+
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    return;
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    return;
+                }
+            });
         }
     }
 
