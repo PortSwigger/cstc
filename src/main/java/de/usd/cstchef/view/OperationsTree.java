@@ -129,7 +129,7 @@ public class OperationsTree extends JTree {
             OperationInfos operationInfos = operation.getAnnotation(OperationInfos.class);
             if (operationInfos == null) {
                 if (!Modifier.isAbstract(operation.getModifiers())) {
-                    Logger.getInstance().err("Found a operation without annotaion: " + operation);
+                    Logger.getInstance().err("Found a operation without annotation: " + operation);
                 }
                 continue;
             }
