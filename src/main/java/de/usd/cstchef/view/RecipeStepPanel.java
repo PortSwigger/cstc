@@ -9,8 +9,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -125,7 +123,16 @@ public class RecipeStepPanel extends JPanel {
         operationsLine.revalidate();
         operationsLine.repaint();
         if (comp instanceof Operation) {
+            ((Operation) comp).setRecipeStepPanel(this);
             ((Operation) comp).setChangeListener(this.changeListener);
+            this.changeListener.stateChanged(new ChangeEvent(this));
+        }
+    }
+
+    public void updateUI() {
+        if(operationsLine != null) {
+            operationsLine.revalidate();
+            operationsLine.repaint();
             this.changeListener.stateChanged(new ChangeEvent(this));
         }
     }
