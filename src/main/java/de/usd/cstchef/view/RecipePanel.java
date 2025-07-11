@@ -30,7 +30,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.event.ChangeEvent;
@@ -91,6 +93,9 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
     private JCheckBox bakeCheckBox = new JCheckBox("Auto bake");
     private JButton bakeButton = new JButton("Bake");
+
+    private JSpinner autoBakeInterval = new JSpinner(new SpinnerNumberModel(1000, 500, 900000, 200));
+    private Timer autoBakeTimer;
 
     public RecipePanel(BurpOperation operation) {
 
@@ -264,6 +269,19 @@ public class RecipePanel extends JPanel implements ChangeListener {
             }
         });
 
+        autoBakeInterval.setPreferredSize(new Dimension(100, 22));
+        autoBakeInterval.setMaximumSize(new Dimension(100, 22));
+        autoBakeInterval.setToolTipText("Auto bake interval in milliseconds.\nMin: 500ms Max: 900000ms");
+        activeOperationsPanel.addActionComponent(autoBakeInterval);
+        autoBakeInterval.addChangeListener(new ChangeListener() {
+
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                startAutoBakeTimer((int)autoBakeInterval.getValue());
+            }
+            
+        });
+
         bakeCheckBox.setSelected(this.autoBake);
         activeOperationsPanel.addActionComponent(bakeCheckBox);
         bakeCheckBox.addActionListener(new ActionListener() {
@@ -271,7 +289,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
             public void actionPerformed(ActionEvent ae) {
                 autoBake = bakeCheckBox.isSelected();
                 bakeButton.setEnabled(!autoBake);
-                bake(false);
+                //bake(false);
             }
         });
 
@@ -382,7 +400,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         operationsTree.addMouseListener(dma);
         operationsTree.addMouseMotionListener(dma);
 
-        startAutoBakeTimer();
+        startAutoBakeTimer(1000);
     }
 
     public void disableAutobakeIfFilterActive() {
@@ -737,7 +755,10 @@ public class RecipePanel extends JPanel implements ChangeListener {
         }
     }
 
-    private void startAutoBakeTimer() {
+    private void startAutoBakeTimer(int milliseconds) {
+        if(autoBakeTimer != null) {
+            autoBakeTimer.cancel();
+        }
         TimerTask repeatedTask = new TimerTask() {
             public void run() {
                 if (inputText.isModified()) {
@@ -745,10 +766,8 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 }
             }
         };
-        Timer timer = new Timer("Timer");
-        long delay  = 1000L;
-        long period = 1000L;
-        timer.scheduleAtFixedRate(repeatedTask, delay, period);
+        autoBakeTimer = new Timer("Auto Bake Timer");
+        autoBakeTimer.scheduleAtFixedRate(repeatedTask, milliseconds, milliseconds);
     }
 
     public void autoBake() {
