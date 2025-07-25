@@ -68,8 +68,10 @@ public class RecipeStepPanel extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 String newTitle = JOptionPane.showInputDialog("Edit title:", getTitle());
-                contentTextField.setText(newTitle.length() <= 50 ? newTitle : getTitle());
-                setTitle(newTitle.length() <= 50 ? newTitle : getTitle()); // lane name should be leq 50 chars
+                if(newTitle != null) {
+                    contentTextField.setText(newTitle.length() <= 50 ? newTitle : getTitle());
+                    setTitle(newTitle.length() <= 50 ? newTitle : getTitle()); // lane name should be leq 50 chars
+                }
             }
         });
         headerBox.add(contentTextField);
