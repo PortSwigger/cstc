@@ -69,7 +69,14 @@ public class RequestFilterDialog extends JPanel {
             box.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
+                    // set Filter
                     BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(filter, box.isSelected());
+
+                    // disable autobake
+                    BurpUtils.getInstance().getView().preventRaceConditionOnVariables();
+
+                    // remove inactivity warning
+                    BurpUtils.getInstance().getView().updateInactiveWarnings();
                 }
             });
             panel.add(box);

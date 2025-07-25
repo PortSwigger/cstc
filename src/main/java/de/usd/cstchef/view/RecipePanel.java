@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -59,6 +60,7 @@ import burp.api.montoya.persistence.PersistedObject;
 import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.operations.Operation;
+import de.usd.cstchef.view.filter.Filter;
 import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 import de.usd.cstchef.view.ui.PlaceholderTextField;
 import de.usd.cstchef.view.ui.TextChangedListener;
@@ -203,15 +205,11 @@ public class RecipePanel extends JPanel implements ChangeListener {
         filters.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                int result = JOptionPane.showConfirmDialog(null, RequestFilterDialog.getInstance(), "Request Filter",
-                        JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-                if (result == JOptionPane.OK_OPTION) {
-                    BurpUtils.getInstance().getFilterState().setFilterMask(
-                            RequestFilterDialog.getInstance().getFilterMask(BurpOperation.INCOMING),
-                            RequestFilterDialog.getInstance().getFilterMask(BurpOperation.OUTGOING));
-                }
-                BurpUtils.getInstance().getView().preventRaceConditionOnVariables();
-                BurpUtils.getInstance().getView().updateInactiveWarnings();
+
+                Object[] options = { "Close" };
+                JOptionPane.showOptionDialog(null, RequestFilterDialog.getInstance(), "Request Filter",
+                        JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+                
                 if (!BurpUtils.getInstance().getApi().burpSuite().version().edition()
                         .equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
                     saveFilterState();
