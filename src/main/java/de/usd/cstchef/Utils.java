@@ -158,6 +158,7 @@ import de.usd.cstchef.operations.utils.GetVariable;
 import de.usd.cstchef.operations.utils.NoOperation;
 import de.usd.cstchef.operations.utils.RandomNumber;
 import de.usd.cstchef.operations.utils.RandomUUID;
+import de.usd.cstchef.operations.utils.RequestToResponse;
 import de.usd.cstchef.operations.utils.SetIfEmpty;
 import de.usd.cstchef.operations.utils.StopOperation;
 import de.usd.cstchef.operations.utils.StoreVariable;
@@ -399,7 +400,7 @@ public class Utils {
                 NoOperation.class, NumberCompare.class,
                 Prefix.class, PlainRequest.class,
                 RandomNumber.class, RandomUUID.class, ReadFile.class, RegexExtractor.class, RegexMatch.class, RequestBuilder.class, Reverse.class,
-                Replace.class, RIPEMD.class, RsaDecryption.class, RsaEncryption.class, RsaSignature.class, RemoveWhitespace.class,
+                Replace.class, RIPEMD.class, RsaDecryption.class, RsaEncryption.class, RsaSignature.class, RemoveWhitespace.class, RequestToResponse.class,
                 SM2Signature.class, SM3.class, SM4Encryption.class, SM4Decryption.class, SoapMultiSignature.class, StopOperation.class,
                 SetIfEmpty.class, SHA1.class, SHA2.class, SHA3.class, Skein.class, SplitAndSelect.class,
                 StaticString.class, StoreVariable.class, Sub.class, Substring.class, Subtraction.class,

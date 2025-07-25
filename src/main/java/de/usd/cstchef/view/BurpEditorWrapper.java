@@ -31,6 +31,8 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
     private JTextArea fallbackArea;
     private Editor burpEditor;
     private ByteArray lastContent;
+    private ByteArray requestToResponse;
+    private boolean isChangedViaContextMenu = false;
 
     public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, Boolean isInputEditor){
         this.api = BurpUtils.getInstance().getApi();
@@ -62,6 +64,9 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
                             // Save the Editor's input to the Burp State
                             api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
                         }
+                        if(!isChangedViaContextMenu) {
+                            requestToResponse = null;
+                        }
                     } catch (BadLocationException e1) {
                         return;
                     }
@@ -80,6 +85,14 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
         }
     }
 
+    public ByteArray getRequestToResponse() {
+        return this.requestToResponse;
+    }
+
+    public void setRequestToResponse(ByteArray requestToResponse) {
+        this.requestToResponse = requestToResponse;
+    }
+
     @Override
     public ByteArray getContents() {
         if(operation == BurpOperation.FORMAT)
@@ -94,6 +107,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
     @Override
     public void setContents(ByteArray contents) {
+        isChangedViaContextMenu = true;
         this.lastContent = contents;
         if(operation == BurpOperation.OUTGOING)
             ((HttpRequestEditor)burpEditor).setRequest(HttpRequest.httpRequest(contents));
@@ -101,6 +115,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             ((HttpResponseEditor)burpEditor).setResponse(HttpResponse.httpResponse(contents));
         else
             ((RawEditor)burpEditor).setContents(contents);
+        isChangedViaContextMenu = false;
     }
 
     @Override
@@ -115,12 +130,14 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
     @Override
     public void setResponse(HttpResponse response) {
+        isChangedViaContextMenu = true;
         if (fallbackMode) {
             fallbackArea.setText(response.toString());
         } else {
             this.lastContent = response.toByteArray();
             ((HttpResponseEditor)burpEditor).setResponse(response);
         }
+        isChangedViaContextMenu = false;
     }
 
     @Override
@@ -135,12 +152,14 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
     @Override
     public void setRequest(HttpRequest request) {
+        isChangedViaContextMenu = true;
         if (fallbackMode) {
             fallbackArea.setText(request.toString());
         } else {
             this.lastContent = request.toByteArray();
             ((HttpRequestEditor)burpEditor).setRequest(request);
         }
+        isChangedViaContextMenu = false;
     }
 
     @Override

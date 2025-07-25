@@ -373,7 +373,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         });
 
         for (int i = operationSteps; i > 0; i--) {
-            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(i), this);
+            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(i), this, this.operation);
             operationLines.add(opPanel, co, 0);
 
             JPanel panel = opPanel.getOperationsPanel();
@@ -444,7 +444,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         co.fill = GridBagConstraints.VERTICAL;
 
         for(int i = 0; i < number; i++) {
-            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(operationSteps - (number - i) + 1), this);
+            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(operationSteps - (number - i) + 1), this, this.operation);
             operationLines.add(opPanel, co, operationSteps - (number - i));
             operationLines.revalidate();
             operationLines.repaint();
@@ -483,8 +483,12 @@ public class RecipePanel extends JPanel implements ChangeListener {
         }
         else if(operation == BurpOperation.INCOMING) {
             HttpResponse response = requestResponse.response();
-            if(response == null)
+            if(response == null) {
                 response = HttpResponse.httpResponse(ByteArray.byteArray("The message you have sent via the context menu does not have a valid HTML response. Try including a response to a request or use the formatting tab."));
+            }
+            else {
+                this.inputText.setRequestToResponse(requestResponse.request().toByteArray());
+            }
             this.inputText.setResponse(response);
         }
 
@@ -658,7 +662,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         fw.close();
     }
 
-    private ByteArray doBake(ByteArray input) {
+    private ByteArray doBake(ByteArray input, ByteArray requestToResponse) {
         
         ByteArray result = input.copy();
         ByteArray intermediateResult = input;
@@ -685,7 +689,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
                     continue;
                 }
 
-                intermediateResult = op.performOperation(intermediateResult);
+                intermediateResult = op.performOperation(intermediateResult, requestToResponse);
                 outputChanged = true;
 
                 if (op.isBreakpoint()) {
@@ -715,7 +719,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         TimerTask tt = new TimerTask() {
             @Override
             public void run() {
-                ByteArray result = doBake(inputText.getRequest() == null ? inputText.getContents() /* inputText.getResponse().toByteArray() */ : inputText.getRequest().toByteArray());
+                ByteArray result = doBake(inputText.getRequest() == null ? inputText.getContents() /* inputText.getResponse().toByteArray() */ : inputText.getRequest().toByteArray(), inputText.getRequestToResponse());
                 HashMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
@@ -745,11 +749,11 @@ public class RecipePanel extends JPanel implements ChangeListener {
         this.bakeTimer.schedule(tt, threshold);
     }
 
-    public ByteArray bake(ByteArray input, MessageType messageType) {
+    public ByteArray bake(ByteArray input, ByteArray /* make request available if a response is to bake (to use in RequesToResponse) */ requestToResponse) {
         VariableStore store = VariableStore.getInstance();
         try {
             store.lock();
-            return this.doBake(input);
+            return this.doBake(input, requestToResponse);
         } finally {
             store.unlock();
         }

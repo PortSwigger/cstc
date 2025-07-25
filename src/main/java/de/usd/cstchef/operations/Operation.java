@@ -42,11 +42,14 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.apache.commons.lang3.NotImplementedException;
+
 import burp.BurpObjectFactory;
 import burp.CstcObjectFactory;
 import burp.Logger;
 import burp.api.montoya.core.ByteArray;
 import de.usd.cstchef.Utils.MessageType;
+import de.usd.cstchef.operations.utils.RequestToResponse;
 import de.usd.cstchef.view.RecipeStepPanel;
 import de.usd.cstchef.view.ui.FormatTextField;
 import de.usd.cstchef.view.ui.VariableTextArea;
@@ -213,6 +216,10 @@ public abstract class Operation extends JPanel {
 
     public void setRecipeStepPanel(RecipeStepPanel recipeStepPanel) {
         this.lane = recipeStepPanel;
+    }
+
+    public RecipeStepPanel getRecipeStepPanel() {
+        return this.lane;
     }
 
     public void updateStepPanel() {
@@ -428,9 +435,16 @@ public abstract class Operation extends JPanel {
         return dim;
     }
 
-    public ByteArray performOperation(ByteArray input) {
+    public ByteArray performOperation(ByteArray input, ByteArray requestToResponse) {
+        ByteArray result = null;
         try {
-            ByteArray result = this.perform(input);
+            if(this instanceof RequestToResponse) {
+                result = this.perform(input, requestToResponse);
+            }
+            else {
+                result = this.perform(input);
+            }
+
             this.setErrorMessage(null);
             return result;
         } catch (EOFException e) {
@@ -539,6 +553,10 @@ public abstract class Operation extends JPanel {
     }
 
     protected abstract ByteArray perform(ByteArray input) throws Exception;
+
+    public ByteArray perform(ByteArray input, ByteArray requestToResponse) throws Exception {
+        throw new NotImplementedException("This method is not implemented for the operation " + this.getClass().getAnnotation(OperationInfos.class).name());
+    }
 
     public void createUI() {
 

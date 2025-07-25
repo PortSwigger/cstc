@@ -9,7 +9,6 @@ import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.RawEditor;
 import burp.api.montoya.ui.editor.extension.EditorCreationContext;
 import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpRequestEditor;
-import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.view.View;
 
 import java.awt.*;
@@ -37,7 +36,7 @@ public class MyExtensionProvidedHttpRequestEditorFormatting implements Extension
     @Override
     public void setRequestResponse(HttpRequestResponse requestResponse)
     {
-        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.request().toByteArray(), MessageType.REQUEST);
+        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.request().toByteArray(), requestResponse.request().toByteArray());
         this.requestEditor.setContents(result);
     }
 

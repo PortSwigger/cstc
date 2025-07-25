@@ -9,7 +9,6 @@ import burp.api.montoya.http.handler.RequestToBeSentAction;
 import burp.api.montoya.http.handler.ResponseReceivedAction;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
-import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.view.View;
 import de.usd.cstchef.view.filter.FilterState;
 
@@ -36,7 +35,7 @@ public class CstcHttpHandler implements HttpHandler {
         if (BurpUtils.getInstance().getFilterState().shouldProcess(FilterState.BurpOperation.OUTGOING, requestToBeSent.toolSource().toolType())) {
 
             ByteArray request = requestToBeSent.toByteArray();
-            ByteArray modifiedRequest = view.getOutgoingRecipePanel().bake(request, MessageType.REQUEST);
+            ByteArray modifiedRequest = view.getOutgoingRecipePanel().bake(request, null);
             return continueWith(HttpRequest.httpRequest(modifiedRequest).withService(requestToBeSent.httpService()));
         }
         else{
@@ -51,7 +50,7 @@ public class CstcHttpHandler implements HttpHandler {
                 return continueWith(responseReceived);
             }
             ByteArray response = responseReceived.toByteArray();
-            ByteArray modifiedResponse = view.getIncomingRecipePanel().bake(response, MessageType.RESPONSE);
+            ByteArray modifiedResponse = view.getIncomingRecipePanel().bake(response, responseReceived.initiatingRequest().toByteArray());
             return continueWith(HttpResponse.httpResponse(modifiedResponse));
         }
         else{

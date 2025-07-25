@@ -29,6 +29,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import de.usd.cstchef.operations.*;
+import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 
 public class RecipeStepPanel extends JPanel {
 
@@ -37,14 +38,17 @@ public class RecipeStepPanel extends JPanel {
     private ChangeListener changeListener;
     private JTextField contentTextField;
 
+    private BurpOperation operation;
+
     private String comment;
     private JButton commentBtn;
 
     private static ImageIcon commentIcon = new ImageIcon(Operation.class.getResource("/comment.png"));
     private static ImageIcon noCommentIcon = new ImageIcon(Operation.class.getResource("/no_comment.png"));
 
-    public RecipeStepPanel(String title, ChangeListener changelistener) {
+    public RecipeStepPanel(String title, ChangeListener changelistener, BurpOperation operation) {
         this.changeListener = changelistener;
+        this.operation = operation;
         this.setLayout(new BorderLayout());
         this.setPreferredSize(new Dimension(350, 0));
 
@@ -116,6 +120,10 @@ public class RecipeStepPanel extends JPanel {
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         this.add(scrollPane, BorderLayout.CENTER);
+    }
+
+    public BurpOperation getOperation() {
+        return this.operation;
     }
 
     public void addComponent(Component comp, int index) {
