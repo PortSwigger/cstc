@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -263,7 +264,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
                         String jsonState = new String(Files.readAllBytes(Paths.get(file.getPath())));
                         restoreState(jsonState);
                     }
-                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IOException e) {
+                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IOException | InvocationTargetException | NoSuchMethodException e) {
                     JOptionPane.showMessageDialog(null, "The provided file could not be loaded.");
                 }
             }
@@ -518,7 +519,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         }
     }
 
-    public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         this.clear();
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode = mapper.readTree(jsonState);
@@ -577,7 +578,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 Class<Operation> cls = (Class<Operation>) Class.forName(operation);
 
                 // check if it is an operation
-                Operation op = cls.newInstance();
+                Operation op = cls.getDeclaredConstructor().newInstance();
                 op.load(parameters);
 
                 if(operationNode.get("is_enabled") != null) {
