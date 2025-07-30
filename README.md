@@ -77,7 +77,7 @@ installed in *Burp Suite* using the ``Extender->Add->Extensiontype-java`` featur
 The tool uses a GUI which basic idea is similar to the [CyberChef](https://gchq.github.io/CyberChef/). However, it introduces
 a new concept which we call *lanes*. The output of a *CSTC* transformation is always determined
 from the the last *lane* which has an active operation. This initially takes getting used to, but quickly feels intuitive.
-Take a look at our basic tutorial on [YouTube](https://www.youtube.com/watch?v=BUXvWfb_YWU) and make sure to read our initial
+Take a look at our basic tutorial on [YouTube](https://www.youtube.com/watch?v=6fjW4iXj5cg) and make sure to read our initial
 *CSTC* [blog post](https://herolab.usd.de/news-cyber-security-transformation-chef/).
 
 **UPDATE:** Due to some incompatibility issues when installing *CSTC* via *BApp Store*, we had to switch to a new variable prefix.
