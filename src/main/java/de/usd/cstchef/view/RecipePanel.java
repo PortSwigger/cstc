@@ -17,16 +17,17 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -34,6 +35,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
+import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
@@ -60,7 +62,6 @@ import burp.api.montoya.persistence.PersistedObject;
 import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.operations.Operation;
-import de.usd.cstchef.view.filter.Filter;
 import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 import de.usd.cstchef.view.ui.PlaceholderTextField;
 import de.usd.cstchef.view.ui.TextChangedListener;
@@ -90,6 +91,8 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
     private static ImageIcon plusIcon = new ImageIcon(Operation.class.getResource("/plus.png"));
     private static ImageIcon minusIcon = new ImageIcon(Operation.class.getResource("/minus.png"));
+
+    private JButton filters = new JButton("Filter");
 
     private JButton addLaneButton = new JButton();
     private JButton removeLaneButton = new JButton();
@@ -195,7 +198,6 @@ public class RecipePanel extends JPanel implements ChangeListener {
             activeOperationsPanel.addActionComponent(inactiveWarning);
 
         // add action items
-        JButton filters = new JButton("Filter");
         if(this.operation != BurpOperation.FORMAT)
             activeOperationsPanel.addActionComponent(filters);
         
@@ -216,6 +218,22 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 }
             }
         });
+
+        KeyStroke keyStroke = KeyStroke.getKeyStroke("ctrl shift F");
+        this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, "clickFilter");
+
+        this.getActionMap().put("clickFilter", new AbstractAction() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(operation != BurpOperation.FORMAT) {
+                    filters.doClick();
+                }
+            }
+            
+        });
+
+        filters.setToolTipText("Hotkey: CTRL + SHIFT + F");
 
         bakeButton.setEnabled(!autoBake);
         activeOperationsPanel.addActionComponent(bakeButton);
