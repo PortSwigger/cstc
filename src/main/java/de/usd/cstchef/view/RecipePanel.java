@@ -540,6 +540,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         if(input != null) {
             inputText.setContents(ByteArray.byteArray(input));
         }
+        inputText.setInputRestoredTrue();
     }
 
     public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {

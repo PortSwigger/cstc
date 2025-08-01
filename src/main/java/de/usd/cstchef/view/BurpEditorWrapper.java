@@ -33,6 +33,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
     private ByteArray lastContent;
     private ByteArray requestToResponse;
     private boolean isChangedViaContextMenu = false;
+    private boolean isInputRestored = false;
 
     public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, Boolean isInputEditor){
         this.api = BurpUtils.getInstance().getApi();
@@ -60,8 +61,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
                 @Override
                 public void changedUpdate(DocumentEvent e) {
                     try {
-                        if(e.getDocument().getLength() > 0) {
-                            // Save the Editor's input to the Burp State
+                        if(isInputRestored) {
                             api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
                         }
                         if(!isChangedViaContextMenu) {
@@ -83,6 +83,10 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
                 }
             });
         }
+    }
+
+    public void setInputRestoredTrue() {
+        this.isInputRestored = true;
     }
 
     public ByteArray getRequestToResponse() {
