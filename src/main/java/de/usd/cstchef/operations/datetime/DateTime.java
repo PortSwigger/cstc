@@ -9,11 +9,11 @@ import de.usd.cstchef.operations.OperationCategory;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.view.ui.VariableTextField;
 
-@OperationInfos(name = "Date Time", category = OperationCategory.DATES, description = DateTime.helpText)
+@OperationInfos(name = "Date Time", category = OperationCategory.DATES, description = DateTime.description)
 public class DateTime extends Operation {
 
     private VariableTextField patternTxt;
-    private final static String helpText = """
+    public final static String description = """
             Returns the current date time formatted with the provided date time pattern.
 
             G - Era designator
