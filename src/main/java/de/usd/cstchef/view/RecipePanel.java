@@ -286,9 +286,12 @@ public class RecipePanel extends JPanel implements ChangeListener {
             }
         });
 
+        // remove comma of number representation
+        autoBakeInterval.setEditor(new JSpinner.NumberEditor(autoBakeInterval, "0"));
+
         autoBakeInterval.setPreferredSize(new Dimension(100, 22));
         autoBakeInterval.setMaximumSize(new Dimension(100, 22));
-        autoBakeInterval.setToolTipText("Auto bake interval in milliseconds.\nMin: 500ms Max: 900000ms");
+        autoBakeInterval.setToolTipText("Auto bake interval in milliseconds.\nMin: 500ms Max: 900,000ms (= 15min)");
         activeOperationsPanel.addActionComponent(autoBakeInterval);
         autoBakeInterval.addChangeListener(new ChangeListener() {
 
@@ -428,11 +431,13 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 this.bakeButton.setEnabled(true);
                 this.bakeCheckBox.setEnabled(false);
                 this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
+                this.autoBakeInterval.setEnabled(false);
                 return;
             }
             else if(!this.bakeCheckBox.isEnabled() && !b) {
                 this.bakeCheckBox.setEnabled(true);
                 this.bakeCheckBox.setToolTipText("");
+                this.autoBakeInterval.setEnabled(true);
             }
         }
 
@@ -443,11 +448,13 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 this.bakeButton.setEnabled(true);
                 this.bakeCheckBox.setEnabled(false);
                 this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
+                this.autoBakeInterval.setEnabled(false);
                 return;
             }
             else if(!this.bakeCheckBox.isEnabled() && !b) {
                 this.bakeCheckBox.setEnabled(true);
                 this.bakeCheckBox.setToolTipText("");
+                this.autoBakeInterval.setEnabled(true);
             }
         }
     }   
