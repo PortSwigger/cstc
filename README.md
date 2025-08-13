@@ -103,7 +103,7 @@ Only the HTTP request message editor in the *Repeater* has an additional tab cal
 If you're missing an operation in the CSTC, we encourage you to give it a shot at implementing it yourself! 
 It's possible in three easy steps:
 
-1. Copy the below template into a Java class file under `src/main/java/de/usd/cstchef/operations`. The folders here represent the categories. Than change all the placeholders in below template and add your cstom operation logic in the perform method.
+1. Copy the below template into a Java class file under `src/main/java/de/usd/cstchef/operations`. The folders here represent the categories. Then change all the placeholders in below template and add your custom operation logic in the `perform()` method.
 
 ```java
 import burp.api.montoya.core.ByteArray;
