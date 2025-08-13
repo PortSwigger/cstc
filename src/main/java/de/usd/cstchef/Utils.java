@@ -85,6 +85,8 @@ import de.usd.cstchef.operations.dataformat.ToBase64;
 import de.usd.cstchef.operations.dataformat.ToHex;
 import de.usd.cstchef.operations.dataformat.UrlDecode;
 import de.usd.cstchef.operations.dataformat.UrlEncode;
+import de.usd.cstchef.operations.dataformat.DecimalDecode;
+import de.usd.cstchef.operations.dataformat.DecimalEncode;
 import de.usd.cstchef.operations.datetime.DateTime;
 import de.usd.cstchef.operations.datetime.TimestampOffset;
 import de.usd.cstchef.operations.datetime.TimestampToDateTime;
@@ -414,7 +416,7 @@ public class Utils {
                 TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToHex.class, UnixTimestamp.class,
                 UrlDecode.class, UrlEncode.class,
                 Whirlpool.class, WriteFile.class, XmlFullSignature.class, XmlMultiSignature.class,
-                Xor.class, SoapMultiSignature.class, Luhn.class, Concatenate.class, JsonBeautifier.class
+                Xor.class, SoapMultiSignature.class, Luhn.class, Concatenate.class, JsonBeautifier.class, DecimalEncode.class, DecimalDecode.class
         };
     }
 
