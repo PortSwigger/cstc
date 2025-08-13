@@ -98,6 +98,34 @@ The *CSTC Formatting* tab is available in all of Burp's HTTP message editors and
 
 Only the HTTP request message editor in the *Repeater* has an additional tab called *CSTC*. Here, the recipe currently defined in *Outgoing* is applied to the request, making it visible how the request is sent to the server **if** the CSTC is activated for the *Repeater*.
 
+### How to Add Custom Operations to the CSTC?
+
+If you're missing an operation in the CSTC, we encourage you to give it a shot at implementing it yourself! 
+It's possible in three easy steps:
+
+1. Copy the below template into a Java class file under `src/main/java/de/usd/cstchef/operations`. The folders here represent the categories. Than change all the placeholders in below template and add your cstom operation logic in the perform method.
+
+```java
+import burp.api.montoya.core.ByteArray;
+import de.usd.cstchef.operations.Operation;
+import de.usd.cstchef.operations.Operation.OperationInfos;
+
+@OperationInfos(name = "<NAME OF OPERATION IN LIST>", category = <CATEGORY>, description = "<DESCRIPTION HELP TEXT>")
+public class <CLASSNAME> extends Operation {
+
+    @Override
+    protected ByteArray perform(ByteArray input) throws Exception {
+        <LOGIC>
+    }
+
+}
+```
+
+2. You need to link the class of your operation in the `getOperationsDev()` method in `src/main/java/de/usd/cstchef/Utils.java`. 
+3. Last but not least: Rebuild the project with maven. Now load the "cstc-$version-jar-with-dependencies.jar" from the `target/` folder into Burp manually and you're ready to go. 
+
+Most important: Please open a pull request with your operation to the CSTC, we are highly interested in contributions and new operations making the CSTC better for us all!
+
 ## Feedback
 
 We gladly appreciate all feedback, bug reports and feature requests.
