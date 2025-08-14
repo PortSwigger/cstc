@@ -75,6 +75,8 @@ import de.usd.cstchef.operations.dataformat.ToBase64;
 import de.usd.cstchef.operations.dataformat.ToHex;
 import de.usd.cstchef.operations.dataformat.UrlDecode;
 import de.usd.cstchef.operations.dataformat.UrlEncode;
+import de.usd.cstchef.operations.dataformat.DecimalDecode;
+import de.usd.cstchef.operations.dataformat.DecimalEncode;
 import de.usd.cstchef.operations.datetime.DateTime;
 import de.usd.cstchef.operations.datetime.TimestampOffset;
 import de.usd.cstchef.operations.datetime.TimestampToDateTime;
@@ -383,7 +385,7 @@ public class Utils {
                 Addition.class, AddKey.class, AesDecryption.class, AesEncryption.class, And.class,
                 Blake.class,
                 Counter.class, Concatenate.class,
-                DateTime.class, Deflate.class, DesDecryption.class, DesEncryption.class,
+                DateTime.class, Deflate.class, DesDecryption.class, DesEncryption.class, DecimalEncode.class, DecimalDecode.class,
                 Divide.class, DivideList.class, DSTU7564.class,
                 FromBase64.class, FromHex.class,
                 GetVariable.class, Gost.class, GUnzip.class, Gzip.class,
