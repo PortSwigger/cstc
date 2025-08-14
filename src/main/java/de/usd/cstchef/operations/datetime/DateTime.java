@@ -9,10 +9,51 @@ import de.usd.cstchef.operations.OperationCategory;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.view.ui.VariableTextField;
 
-@OperationInfos(name = "Date Time", category = OperationCategory.DATES, description = "Returns the current date time formatted with the provided date time pattern.")
+@OperationInfos(name = "Date Time", category = OperationCategory.DATES, description = DateTime.description)
 public class DateTime extends Operation {
 
     private VariableTextField patternTxt;
+    public final static String description = """
+            Returns the current date time formatted with the provided date time pattern.
+
+            G - Era designator
+
+            y - Year
+
+            Y - Week year
+
+            M - Month in year (context sensitive)
+            L - Month in year (standalone form)
+
+            w - Week in year
+            W - Week in month
+
+            D - Day in year
+            d - Day in month
+            F - Day of week in month
+            E - Day name in week
+            u - Day number of week (1 = Monday...)
+
+            a - Am/pm marker
+
+            H - Hour in day (0-23)
+            k - Hour in day (1-24)
+            K - Hour in am/pm (0-11)
+            h - Hour in am/pm (1-12)
+
+            m - Minute in hour
+
+            s - Second in minute
+
+            S - Millisecond
+            
+            z - Time zone
+            Z - Time zone
+            X - Time zone
+
+            Example:
+            Y-M-d, h:m a    1980-5-17, 3:35 PM
+            """;;
 
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
