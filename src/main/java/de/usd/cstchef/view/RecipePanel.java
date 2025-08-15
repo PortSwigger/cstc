@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import burp.BurpUtils;
 import burp.CstcMessageEditorController;
 import burp.Logger;
+import burp.MyExtensionProvidedHttpResponseEditorFormatting;
 import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.message.HttpRequestResponse;
@@ -857,6 +858,11 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         if (!BurpUtils.getInstance().getApi().burpSuite().version().edition().equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
             saveRecipe();
+        }
+        for(MyExtensionProvidedHttpResponseEditorFormatting tab : MyExtensionProvidedHttpResponseEditorFormatting.cstcFormattingTabsinRepeater) {
+            if(tab.getRequestResponse() != null) {
+                tab.setRequestResponse(tab.getRequestResponse());
+            }
         }
     }
 

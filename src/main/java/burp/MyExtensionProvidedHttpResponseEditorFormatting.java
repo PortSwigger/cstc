@@ -2,6 +2,7 @@ package burp;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
+import burp.api.montoya.core.ToolType;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.ui.Selection;
@@ -12,9 +13,11 @@ import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpResponseEditor;
 import de.usd.cstchef.view.View;
 
 import java.awt.*;
+import java.util.ArrayList;
 
 public class MyExtensionProvidedHttpResponseEditorFormatting implements ExtensionProvidedHttpResponseEditor
 {
+    public static ArrayList<MyExtensionProvidedHttpResponseEditorFormatting> cstcFormattingTabsinRepeater = new ArrayList<>();
     private final RawEditor responseEditor;
     private HttpRequestResponse requestResponse;
     private final MontoyaApi api;
@@ -25,6 +28,13 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
         this.api = BurpUtils.getInstance().getApi();
         this.view = view;
         responseEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
+        if(creationContext.toolSource().isFromTool(ToolType.REPEATER)) {
+            cstcFormattingTabsinRepeater.add(this);
+        }
+    }
+
+    public HttpRequestResponse getRequestResponse() {
+        return requestResponse;
     }
 
     @Override
@@ -36,6 +46,7 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
     @Override
     public void setRequestResponse(HttpRequestResponse requestResponse)
     {
+        this.requestResponse = requestResponse;
         ByteArray result = view.getFormatRecipePanel().bake(requestResponse.response().toByteArray(), requestResponse.request().toByteArray());
         this.responseEditor.setContents(result);
     }
