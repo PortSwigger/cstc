@@ -75,8 +75,8 @@ import de.usd.cstchef.operations.dataformat.ToBase64;
 import de.usd.cstchef.operations.dataformat.ToHex;
 import de.usd.cstchef.operations.dataformat.UrlDecode;
 import de.usd.cstchef.operations.dataformat.UrlEncode;
-import de.usd.cstchef.operations.dataformat.DecimalDecode;
-import de.usd.cstchef.operations.dataformat.DecimalEncode;
+import de.usd.cstchef.operations.dataformat.FromDecimal;
+import de.usd.cstchef.operations.dataformat.ToDecimal;
 import de.usd.cstchef.operations.datetime.DateTime;
 import de.usd.cstchef.operations.datetime.TimestampOffset;
 import de.usd.cstchef.operations.datetime.TimestampToDateTime;
@@ -385,9 +385,9 @@ public class Utils {
                 Addition.class, AddKey.class, AesDecryption.class, AesEncryption.class, And.class,
                 Blake.class,
                 Counter.class, Concatenate.class,
-                DateTime.class, Deflate.class, DesDecryption.class, DesEncryption.class, DecimalEncode.class, DecimalDecode.class,
+                DateTime.class, Deflate.class, DesDecryption.class, DesEncryption.class,
                 Divide.class, DivideList.class, DSTU7564.class,
-                FromBase64.class, FromHex.class,
+                FromBase64.class, FromDecimal.class, FromHex.class,
                 GetVariable.class, Gost.class, GUnzip.class, Gzip.class,
                 Hmac.class, HttpBodyExtractor.class, HttpCookieExtractor.class, HttpGetExtractor.class,
                 HttpGetSetter.class, HttpHeaderExtractor.class, HttpHeaderSetter.class, HttpHeaderRemove.class,
@@ -407,7 +407,7 @@ public class Utils {
                 SetIfEmpty.class, SHA1.class, SHA2.class, SHA3.class, Skein.class, SplitAndSelect.class,
                 StaticString.class, StoreVariable.class, Sub.class, Substring.class, Subtraction.class,
                 Suffix.class, Sum.class, StringContains.class, StringMatch.class, Strip.class,
-                Tiger.class, TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToHex.class,
+                Tiger.class, TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToDecimal.class, ToHex.class,
                 UnixTimestamp.class, UrlDecode.class, UrlEncode.class, Uppercase.class, UnconditionalJump.class,
                 Whirlpool.class, WriteFile.class,
                 XmlFullSignature.class, XmlMultiSignature.class, Xor.class, XmlSetter.class
