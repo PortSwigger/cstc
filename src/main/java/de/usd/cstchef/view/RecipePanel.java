@@ -859,11 +859,6 @@ public class RecipePanel extends JPanel implements ChangeListener {
         if (!BurpUtils.getInstance().getApi().burpSuite().version().edition().equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
             saveRecipe();
         }
-        for(MyExtensionProvidedHttpResponseEditorFormatting tab : MyExtensionProvidedHttpResponseEditorFormatting.cstcFormattingTabsinRepeater) {
-            if(tab.getRequestResponse() != null) {
-                tab.setRequestResponse(tab.getRequestResponse());
-            }
-        }
     }
 
 }

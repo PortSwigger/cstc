@@ -13,6 +13,8 @@ import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpResponseEditor;
 import de.usd.cstchef.view.View;
 
 import java.awt.*;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 import java.util.ArrayList;
 
 public class MyExtensionProvidedHttpResponseEditorFormatting implements ExtensionProvidedHttpResponseEditor
@@ -27,10 +29,8 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
     {
         this.api = BurpUtils.getInstance().getApi();
         this.view = view;
-        responseEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
-        if(creationContext.toolSource().isFromTool(ToolType.REPEATER)) {
-            cstcFormattingTabsinRepeater.add(this);
-        }
+        this.responseEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
+        this.responseEditor.uiComponent().addFocusListener(new CstcFocusResponseListener(this));
     }
 
     public HttpRequestResponse getRequestResponse() {
@@ -49,6 +49,10 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
         this.requestResponse = requestResponse;
         ByteArray result = view.getFormatRecipePanel().bake(requestResponse.response().toByteArray(), requestResponse.request().toByteArray());
         this.responseEditor.setContents(result);
+    }
+
+    public void reapplyRecipe(){
+        this.setRequestResponse(this.requestResponse);
     }
 
     @Override
@@ -80,4 +84,26 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
     {
         return responseEditor.isModified();
     }
+
+    private class CstcFocusResponseListener implements FocusListener{
+
+        MyExtensionProvidedHttpResponseEditorFormatting responseEditorFormatting;
+
+        public CstcFocusResponseListener(MyExtensionProvidedHttpResponseEditorFormatting responseEditorFormatting){
+            this.responseEditorFormatting = responseEditorFormatting;
+        }
+
+        @Override
+        public void focusGained(FocusEvent e) {
+            this.responseEditorFormatting.reapplyRecipe();
+            Logger.getInstance().log(("Reapplying in Response Editor"));
+        }
+
+        @Override
+        public void focusLost(FocusEvent e) {
+            return;
+        }
+
+    }
 }
+
