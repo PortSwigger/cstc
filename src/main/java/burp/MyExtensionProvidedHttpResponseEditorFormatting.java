@@ -2,7 +2,6 @@ package burp;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
-import burp.api.montoya.core.ToolType;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.ui.Selection;
@@ -96,7 +95,6 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
         @Override
         public void focusGained(FocusEvent e) {
             this.responseEditorFormatting.reapplyRecipe();
-            Logger.getInstance().log(("Reapplying in Response Editor"));
         }
 
         @Override

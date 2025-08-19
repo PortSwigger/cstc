@@ -89,7 +89,6 @@ public class MyExtensionProvidedHttpRequestEditorFormatting implements Extension
         @Override
         public void focusGained(FocusEvent e) {            
             this.requestEditorFormatting.reapplyRecipe();
-            Logger.getInstance().log(("Reapplying in Request Editor"));
         }
 
         @Override
