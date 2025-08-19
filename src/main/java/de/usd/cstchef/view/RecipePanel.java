@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import burp.BurpUtils;
 import burp.CstcMessageEditorController;
 import burp.Logger;
+import burp.MyExtensionProvidedHttpResponseEditorFormatting;
 import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.message.HttpRequestResponse;
