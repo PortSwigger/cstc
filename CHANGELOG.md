@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.6] - 2025-08-21
+
+### Added 
+* Add Stop Operation
+* Add Jump Operation
+* Add To Decimal Operation
+* Add From Decimal Operation
+* Add RequestToResponse Operation
+* Add default extension to saving a recipe
+* Add UI element to make auto bake interval user changeable
+* Add PEM format to RSA operations
+* Add hotkey to open Filter dialog (CTRL + SHIFT + F)
+* Add verbose description to DateTime Operation
+* Add new YouTube tutorial to README
+
+
+### Changed
+* Save Recipe Panel's input to Burp state
+* Refactor Filter dialog UI and logic
+* Select "Find anywhere" of Regex Match by default
+* Add Focus Listener to CSTC Formatting tab to always apply current recipe
+
+### Fixed  
+* Fix editing of a lane title throws an exception
+
+
 ## [1.3.5] - 2025-03-17
 
 ### Added
