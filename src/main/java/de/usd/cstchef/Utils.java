@@ -62,6 +62,8 @@ import de.usd.cstchef.operations.compression.Deflate;
 import de.usd.cstchef.operations.compression.GUnzip;
 import de.usd.cstchef.operations.compression.Gzip;
 import de.usd.cstchef.operations.compression.Inflate;
+import de.usd.cstchef.operations.compression.Unzip;
+import de.usd.cstchef.operations.compression.Zip;
 import de.usd.cstchef.operations.conditional.NumberCompare;
 import de.usd.cstchef.operations.conditional.RegexMatch;
 import de.usd.cstchef.operations.conditional.StringContains;
@@ -408,9 +410,9 @@ public class Utils {
                 StaticString.class, StoreVariable.class, Sub.class, Substring.class, Subtraction.class,
                 Suffix.class, Sum.class, StringContains.class, StringMatch.class, Strip.class,
                 Tiger.class, TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToDecimal.class, ToHex.class,
-                UnixTimestamp.class, UrlDecode.class, UrlEncode.class, Uppercase.class, UnconditionalJump.class,
+                UnixTimestamp.class, UrlDecode.class, UrlEncode.class, Uppercase.class, UnconditionalJump.class, Unzip.class,
                 Whirlpool.class, WriteFile.class,
-                XmlFullSignature.class, XmlMultiSignature.class, Xor.class, XmlSetter.class
+                XmlFullSignature.class, XmlMultiSignature.class, Xor.class, XmlSetter.class, Zip.class
         };
     }
 
