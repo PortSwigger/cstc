@@ -47,6 +47,7 @@ public class RegexMatch extends ConditionalOperation {
 
         this.find = new JCheckBox();
         this.addUIElement("Find anywhere", this.find);
+        this.find.setSelected(true);
     }
 
 }

@@ -1,10 +1,14 @@
 package de.usd.cstchef.view;
 
 import java.awt.Component;
+import java.awt.Container;
 import java.util.Optional;
 
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.BadLocationException;
 
 import burp.BurpUtils;
 import burp.CstcMessageEditorController;
@@ -21,20 +25,19 @@ import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 
 public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor, RawEditor{
 
-    private boolean isModified;
-    private boolean editable;
     private BurpOperation operation;
     private MontoyaApi api;
     private boolean fallbackMode;
     private JTextArea fallbackArea;
     private Editor burpEditor;
     private ByteArray lastContent;
-    private RecipePanel recipePanel;
+    private ByteArray requestToResponse;
+    private boolean isChangedViaContextMenu = false;
+    private boolean isInputRestored = false;
 
-    public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, RecipePanel panel){
+    public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, Boolean isInputEditor){
         this.api = BurpUtils.getInstance().getApi();
         this.operation = operation;
-        this.recipePanel = panel;
         this.lastContent = ByteArray.byteArray("");
         if (BurpUtils.inBurp()) {
             switch(operation){
@@ -48,11 +51,50 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             this.fallbackArea = new JTextArea();
             fallbackMode = true;
         }
+
+        Component component = burpEditor.uiComponent();
+        JTextArea textArea = isInputEditor ? findTextAreaComponent(component) : null;
+
+        if(textArea != null) {
+            textArea.getDocument().addDocumentListener(new DocumentListener() {
+
+                @Override
+                public void changedUpdate(DocumentEvent e) {
+                    try {
+                        if(isInputRestored) {
+                            api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
+                        }
+                        if(!isChangedViaContextMenu) {
+                            requestToResponse = null;
+                        }
+                    } catch (BadLocationException e1) {
+                        return;
+                    }
+                }
+
+                @Override
+                public void insertUpdate(DocumentEvent e) {
+                    return;
+                }
+
+                @Override
+                public void removeUpdate(DocumentEvent e) {
+                    return;
+                }
+            });
+        }
     }
 
-    @Override
-    public void setEditable(boolean editable) {
-        this.editable = editable;
+    public void setInputRestoredTrue() {
+        this.isInputRestored = true;
+    }
+
+    public ByteArray getRequestToResponse() {
+        return this.requestToResponse;
+    }
+
+    public void setRequestToResponse(ByteArray requestToResponse) {
+        this.requestToResponse = requestToResponse;
     }
 
     @Override
@@ -69,6 +111,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
     @Override
     public void setContents(ByteArray contents) {
+        isChangedViaContextMenu = true;
         this.lastContent = contents;
         if(operation == BurpOperation.OUTGOING)
             ((HttpRequestEditor)burpEditor).setRequest(HttpRequest.httpRequest(contents));
@@ -76,6 +119,7 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             ((HttpResponseEditor)burpEditor).setResponse(HttpResponse.httpResponse(contents));
         else
             ((RawEditor)burpEditor).setContents(contents);
+        isChangedViaContextMenu = false;
     }
 
     @Override
@@ -90,12 +134,14 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
     @Override
     public void setResponse(HttpResponse response) {
+        isChangedViaContextMenu = true;
         if (fallbackMode) {
             fallbackArea.setText(response.toString());
         } else {
             this.lastContent = response.toByteArray();
             ((HttpResponseEditor)burpEditor).setResponse(response);
         }
+        isChangedViaContextMenu = false;
     }
 
     @Override
@@ -110,12 +156,20 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
     @Override
     public void setRequest(HttpRequest request) {
+        isChangedViaContextMenu = true;
         if (fallbackMode) {
             fallbackArea.setText(request.toString());
         } else {
             this.lastContent = request.toByteArray();
             ((HttpRequestEditor)burpEditor).setRequest(request);
         }
+        isChangedViaContextMenu = false;
+    }
+
+    @Override
+    public void setEditable(boolean editable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setEditable'");
     }
 
     @Override
@@ -150,5 +204,20 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             return inputScrollPane;
         }
         return burpEditor.uiComponent();
+    }
+
+    /* Find JTextArea of the Editor to attach the DocumentListener to */
+    private JTextArea findTextAreaComponent(Component component) {
+        if (component instanceof JTextArea) {
+            return (JTextArea) component;
+        } else if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                JTextArea result = findTextAreaComponent(child);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+        return null;
     }
 }

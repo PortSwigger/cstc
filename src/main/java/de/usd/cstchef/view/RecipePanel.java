@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -22,19 +23,27 @@ import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
+import javax.swing.KeyStroke;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import org.apache.commons.io.FilenameUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,14 +53,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import burp.BurpUtils;
 import burp.CstcMessageEditorController;
 import burp.Logger;
+import burp.MyExtensionProvidedHttpResponseEditorFormatting;
 import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.persistence.PersistedObject;
-import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.Utils.MessageType;
+import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 import de.usd.cstchef.view.ui.PlaceholderTextField;
@@ -83,11 +93,16 @@ public class RecipePanel extends JPanel implements ChangeListener {
     private static ImageIcon plusIcon = new ImageIcon(Operation.class.getResource("/plus.png"));
     private static ImageIcon minusIcon = new ImageIcon(Operation.class.getResource("/minus.png"));
 
+    private JButton filters = new JButton("Filter");
+
     private JButton addLaneButton = new JButton();
     private JButton removeLaneButton = new JButton();
 
     private JCheckBox bakeCheckBox = new JCheckBox("Auto bake");
     private JButton bakeButton = new JButton("Bake");
+
+    private JSpinner autoBakeInterval = new JSpinner(new SpinnerNumberModel(1000, 500, 900000, 200));
+    private Timer autoBakeTimer;
 
     public RecipePanel(BurpOperation operation) {
 
@@ -105,7 +120,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         // create input panel
         JPanel inputPanel = new LayoutPanel("Input");
-        inputText = new BurpEditorWrapper(controllerOrig, operation, this);
+        inputText = new BurpEditorWrapper(controllerOrig, operation, true);
         inputPanel.add(inputText.uiComponent());
 
         /* 
@@ -117,7 +132,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
         // create output panel
         JPanel outputPanel = new LayoutPanel("Output");
-        outputText = new BurpEditorWrapper(controllerMod, operation, this);
+        outputText = new BurpEditorWrapper(controllerMod, operation, false);
         outputPanel.add(outputText.uiComponent());
 
         outputPanel.setPreferredSize(new Dimension(248, 0));
@@ -184,7 +199,6 @@ public class RecipePanel extends JPanel implements ChangeListener {
             activeOperationsPanel.addActionComponent(inactiveWarning);
 
         // add action items
-        JButton filters = new JButton("Filter");
         if(this.operation != BurpOperation.FORMAT)
             activeOperationsPanel.addActionComponent(filters);
         
@@ -194,21 +208,33 @@ public class RecipePanel extends JPanel implements ChangeListener {
         filters.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                int result = JOptionPane.showConfirmDialog(null, RequestFilterDialog.getInstance(), "Request Filter",
-                        JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-                if (result == JOptionPane.OK_OPTION) {
-                    BurpUtils.getInstance().getFilterState().setFilterMask(
-                            RequestFilterDialog.getInstance().getFilterMask(BurpOperation.INCOMING),
-                            RequestFilterDialog.getInstance().getFilterMask(BurpOperation.OUTGOING));
-                }
-                BurpUtils.getInstance().getView().preventRaceConditionOnVariables();
-                BurpUtils.getInstance().getView().updateInactiveWarnings();
+
+                Object[] options = { "Close" };
+                JOptionPane.showOptionDialog(null, RequestFilterDialog.getInstance(), "Request Filter",
+                        JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, options, options[0]);
+                
                 if (!BurpUtils.getInstance().getApi().burpSuite().version().edition()
                         .equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
                     saveFilterState();
                 }
             }
         });
+
+        KeyStroke keyStroke = KeyStroke.getKeyStroke("ctrl shift F");
+        this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, "clickFilter");
+
+        this.getActionMap().put("clickFilter", new AbstractAction() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(operation != BurpOperation.FORMAT) {
+                    filters.doClick();
+                }
+            }
+            
+        });
+
+        filters.setToolTipText("Hotkey: CTRL + SHIFT + F");
 
         bakeButton.setEnabled(!autoBake);
         activeOperationsPanel.addActionComponent(bakeButton);
@@ -226,9 +252,14 @@ public class RecipePanel extends JPanel implements ChangeListener {
             public void actionPerformed(ActionEvent arg0) {
                 try {
                     JFileChooser fc = new JFileChooser();
+                    FileNameExtensionFilter filter = new FileNameExtensionFilter("CSTC & JSON", "cstc", "json");
+                    fc.setFileFilter(filter);
                     int returnVal = fc.showSaveDialog(RecipePanel.this);
                     if (returnVal == JFileChooser.APPROVE_OPTION) {
                         File file = fc.getSelectedFile();
+                        if(FilenameUtils.getExtension(file.getName()).equals("")) {
+                            file = new File(file.toString() + ".cstc");
+                        }
                         save(file);
                     }
                 } catch (IOException e) {
@@ -250,10 +281,26 @@ public class RecipePanel extends JPanel implements ChangeListener {
                         String jsonState = new String(Files.readAllBytes(Paths.get(file.getPath())));
                         restoreState(jsonState);
                     }
-                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IOException e) {
+                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | IOException | InvocationTargetException | NoSuchMethodException e) {
                     JOptionPane.showMessageDialog(null, "The provided file could not be loaded.");
                 }
             }
+        });
+
+        // remove comma of number representation
+        autoBakeInterval.setEditor(new JSpinner.NumberEditor(autoBakeInterval, "0"));
+
+        autoBakeInterval.setPreferredSize(new Dimension(100, 22));
+        autoBakeInterval.setMaximumSize(new Dimension(100, 22));
+        autoBakeInterval.setToolTipText("Auto bake interval in milliseconds.\nMin: 500ms Max: 900,000ms (= 15min)");
+        activeOperationsPanel.addActionComponent(autoBakeInterval);
+        autoBakeInterval.addChangeListener(new ChangeListener() {
+
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                startAutoBakeTimer((int)autoBakeInterval.getValue());
+            }
+            
         });
 
         bakeCheckBox.setSelected(this.autoBake);
@@ -263,7 +310,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
             public void actionPerformed(ActionEvent ae) {
                 autoBake = bakeCheckBox.isSelected();
                 bakeButton.setEnabled(!autoBake);
-                bake(false);
+                //bake(false);
             }
         });
 
@@ -347,7 +394,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         });
 
         for (int i = operationSteps; i > 0; i--) {
-            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(i), this);
+            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(i), this, this.operation);
             operationLines.add(opPanel, co, 0);
 
             JPanel panel = opPanel.getOperationsPanel();
@@ -374,7 +421,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         operationsTree.addMouseListener(dma);
         operationsTree.addMouseMotionListener(dma);
 
-        startAutoBakeTimer();
+        startAutoBakeTimer(1000);
     }
 
     public void disableAutobakeIfFilterActive() {
@@ -385,11 +432,13 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 this.bakeButton.setEnabled(true);
                 this.bakeCheckBox.setEnabled(false);
                 this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
+                this.autoBakeInterval.setEnabled(false);
                 return;
             }
             else if(!this.bakeCheckBox.isEnabled() && !b) {
                 this.bakeCheckBox.setEnabled(true);
                 this.bakeCheckBox.setToolTipText("");
+                this.autoBakeInterval.setEnabled(true);
             }
         }
 
@@ -400,11 +449,13 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 this.bakeButton.setEnabled(true);
                 this.bakeCheckBox.setEnabled(false);
                 this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
+                this.autoBakeInterval.setEnabled(false);
                 return;
             }
             else if(!this.bakeCheckBox.isEnabled() && !b) {
                 this.bakeCheckBox.setEnabled(true);
                 this.bakeCheckBox.setToolTipText("");
+                this.autoBakeInterval.setEnabled(true);
             }
         }
     }   
@@ -418,7 +469,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         co.fill = GridBagConstraints.VERTICAL;
 
         for(int i = 0; i < number; i++) {
-            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(operationSteps - (number - i) + 1), this);
+            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(operationSteps - (number - i) + 1), this, this.operation);
             operationLines.add(opPanel, co, operationSteps - (number - i));
             operationLines.revalidate();
             operationLines.repaint();
@@ -457,8 +508,12 @@ public class RecipePanel extends JPanel implements ChangeListener {
         }
         else if(operation == BurpOperation.INCOMING) {
             HttpResponse response = requestResponse.response();
-            if(response == null)
+            if(response == null) {
                 response = HttpResponse.httpResponse(ByteArray.byteArray("The message you have sent via the context menu does not have a valid HTML response. Try including a response to a request or use the formatting tab."));
+            }
+            else {
+                this.inputText.setRequestToResponse(requestResponse.request().toByteArray());
+            }
             this.inputText.setResponse(response);
         }
 
@@ -482,7 +537,14 @@ public class RecipePanel extends JPanel implements ChangeListener {
         this.bake(false);
     }
 
-    public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public void restoreInput(String input) {
+        if(input != null) {
+            inputText.setContents(ByteArray.byteArray(input));
+        }
+        inputText.setInputRestoredTrue();
+    }
+
+    public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
         this.clear();
         ObjectMapper mapper = new ObjectMapper();
         JsonNode rootNode = mapper.readTree(jsonState);
@@ -541,7 +603,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 Class<Operation> cls = (Class<Operation>) Class.forName(operation);
 
                 // check if it is an operation
-                Operation op = cls.newInstance();
+                Operation op = cls.getDeclaredConstructor().newInstance();
                 op.load(parameters);
 
                 if(operationNode.get("is_enabled") != null) {
@@ -626,7 +688,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         fw.close();
     }
 
-    private ByteArray doBake(ByteArray input) {
+    private ByteArray doBake(ByteArray input, ByteArray requestToResponse) {
         
         ByteArray result = input.copy();
         ByteArray intermediateResult = input;
@@ -653,7 +715,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
                     continue;
                 }
 
-                intermediateResult = op.performOperation(intermediateResult);
+                intermediateResult = op.performOperation(intermediateResult, requestToResponse);
                 outputChanged = true;
 
                 if (op.isBreakpoint()) {
@@ -683,7 +745,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         TimerTask tt = new TimerTask() {
             @Override
             public void run() {
-                ByteArray result = doBake(inputText.getRequest() == null ? inputText.getContents() /* inputText.getResponse().toByteArray() */ : inputText.getRequest().toByteArray());
+                ByteArray result = doBake(inputText.getRequest() == null ? inputText.getContents() /* inputText.getResponse().toByteArray() */ : inputText.getRequest().toByteArray(), inputText.getRequestToResponse());
                 HashMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
                 SwingUtilities.invokeLater(new Runnable() {
                     @Override
@@ -713,17 +775,20 @@ public class RecipePanel extends JPanel implements ChangeListener {
         this.bakeTimer.schedule(tt, threshold);
     }
 
-    public ByteArray bake(ByteArray input, MessageType messageType) {
+    public ByteArray bake(ByteArray input, ByteArray /* make request available if a response is to bake (to use in RequesToResponse) */ requestToResponse) {
         VariableStore store = VariableStore.getInstance();
         try {
             store.lock();
-            return this.doBake(input);
+            return this.doBake(input, requestToResponse);
         } finally {
             store.unlock();
         }
     }
 
-    private void startAutoBakeTimer() {
+    private void startAutoBakeTimer(int milliseconds) {
+        if(autoBakeTimer != null) {
+            autoBakeTimer.cancel();
+        }
         TimerTask repeatedTask = new TimerTask() {
             public void run() {
                 if (inputText.isModified()) {
@@ -731,10 +796,8 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 }
             }
         };
-        Timer timer = new Timer("Timer");
-        long delay  = 1000L;
-        long period = 1000L;
-        timer.scheduleAtFixedRate(repeatedTask, delay, period);
+        autoBakeTimer = new Timer("Auto Bake Timer");
+        autoBakeTimer.scheduleAtFixedRate(repeatedTask, milliseconds, milliseconds);
     }
 
     public void autoBake() {
