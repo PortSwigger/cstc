@@ -9,13 +9,16 @@ import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.RawEditor;
 import burp.api.montoya.ui.editor.extension.EditorCreationContext;
 import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpResponseEditor;
-import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.view.View;
 
 import java.awt.*;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.util.ArrayList;
 
 public class MyExtensionProvidedHttpResponseEditorFormatting implements ExtensionProvidedHttpResponseEditor
 {
+    public static ArrayList<MyExtensionProvidedHttpResponseEditorFormatting> cstcFormattingTabsinRepeater = new ArrayList<>();
     private final RawEditor responseEditor;
     private HttpRequestResponse requestResponse;
     private final MontoyaApi api;
@@ -25,7 +28,12 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
     {
         this.api = BurpUtils.getInstance().getApi();
         this.view = view;
-        responseEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
+        this.responseEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
+        this.responseEditor.uiComponent().addFocusListener(new CstcFocusResponseListener(this));
+    }
+
+    public HttpRequestResponse getRequestResponse() {
+        return requestResponse;
     }
 
     @Override
@@ -37,8 +45,13 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
     @Override
     public void setRequestResponse(HttpRequestResponse requestResponse)
     {
-        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.response().toByteArray(), MessageType.RESPONSE);
+        this.requestResponse = requestResponse;
+        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.response().toByteArray(), requestResponse.request().toByteArray());
         this.responseEditor.setContents(result);
+    }
+
+    public void reapplyRecipe(){
+        this.setRequestResponse(this.requestResponse);
     }
 
     @Override
@@ -70,4 +83,25 @@ public class MyExtensionProvidedHttpResponseEditorFormatting implements Extensio
     {
         return responseEditor.isModified();
     }
+
+    private class CstcFocusResponseListener implements FocusListener{
+
+        MyExtensionProvidedHttpResponseEditorFormatting responseEditorFormatting;
+
+        public CstcFocusResponseListener(MyExtensionProvidedHttpResponseEditorFormatting responseEditorFormatting){
+            this.responseEditorFormatting = responseEditorFormatting;
+        }
+
+        @Override
+        public void focusGained(FocusEvent e) {
+            this.responseEditorFormatting.reapplyRecipe();
+        }
+
+        @Override
+        public void focusLost(FocusEvent e) {
+            return;
+        }
+
+    }
 }
+

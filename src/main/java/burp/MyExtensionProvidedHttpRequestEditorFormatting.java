@@ -9,10 +9,11 @@ import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.RawEditor;
 import burp.api.montoya.ui.editor.extension.EditorCreationContext;
 import burp.api.montoya.ui.editor.extension.ExtensionProvidedHttpRequestEditor;
-import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.view.View;
 
 import java.awt.*;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 
 public class MyExtensionProvidedHttpRequestEditorFormatting implements ExtensionProvidedHttpRequestEditor
 {
@@ -24,8 +25,9 @@ public class MyExtensionProvidedHttpRequestEditorFormatting implements Extension
     MyExtensionProvidedHttpRequestEditorFormatting(EditorCreationContext creationContext, View view)
     {
         this.api = BurpUtils.getInstance().getApi();
-        this.view = view;
-        requestEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
+        this.view = view;        
+        this.requestEditor = api.userInterface().createRawEditor(EditorOptions.READ_ONLY);
+        this.requestEditor.uiComponent().addFocusListener(new CstcFocusRequestListener(this));
     }
 
     @Override
@@ -37,8 +39,13 @@ public class MyExtensionProvidedHttpRequestEditorFormatting implements Extension
     @Override
     public void setRequestResponse(HttpRequestResponse requestResponse)
     {
-        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.request().toByteArray(), MessageType.REQUEST);
+        this.requestResponse = requestResponse;
+        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.request().toByteArray(), requestResponse.request().toByteArray());
         this.requestEditor.setContents(result);
+    }
+
+    public void reapplyRecipe(){
+        this.setRequestResponse(this.requestResponse);
     }
 
     @Override
@@ -70,4 +77,26 @@ public class MyExtensionProvidedHttpRequestEditorFormatting implements Extension
     {
         return requestEditor.isModified();
     }
+
+    private class CstcFocusRequestListener implements FocusListener{
+
+        MyExtensionProvidedHttpRequestEditorFormatting requestEditorFormatting;
+
+        public CstcFocusRequestListener(MyExtensionProvidedHttpRequestEditorFormatting requestEditorFormatting){
+            this.requestEditorFormatting = requestEditorFormatting;
+        }
+
+        @Override
+        public void focusGained(FocusEvent e) {            
+            this.requestEditorFormatting.reapplyRecipe();
+        }
+
+        @Override
+        public void focusLost(FocusEvent e) {
+            //Not needed
+            return;
+        }
+
+    }
+
 }

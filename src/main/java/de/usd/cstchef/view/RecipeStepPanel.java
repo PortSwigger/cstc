@@ -9,8 +9,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -31,6 +29,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import de.usd.cstchef.operations.*;
+import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 
 public class RecipeStepPanel extends JPanel {
 
@@ -39,14 +38,17 @@ public class RecipeStepPanel extends JPanel {
     private ChangeListener changeListener;
     private JTextField contentTextField;
 
+    private BurpOperation operation;
+
     private String comment;
     private JButton commentBtn;
 
     private static ImageIcon commentIcon = new ImageIcon(Operation.class.getResource("/comment.png"));
     private static ImageIcon noCommentIcon = new ImageIcon(Operation.class.getResource("/no_comment.png"));
 
-    public RecipeStepPanel(String title, ChangeListener changelistener) {
+    public RecipeStepPanel(String title, ChangeListener changelistener, BurpOperation operation) {
         this.changeListener = changelistener;
+        this.operation = operation;
         this.setLayout(new BorderLayout());
         this.setPreferredSize(new Dimension(350, 0));
 
@@ -66,8 +68,10 @@ public class RecipeStepPanel extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 String newTitle = JOptionPane.showInputDialog("Edit title:", getTitle());
-                contentTextField.setText(newTitle.length() <= 50 ? newTitle : getTitle());
-                setTitle(newTitle.length() <= 50 ? newTitle : getTitle()); // lane name should be leq 50 chars
+                if(newTitle != null) {
+                    contentTextField.setText(newTitle.length() <= 50 ? newTitle : getTitle());
+                    setTitle(newTitle.length() <= 50 ? newTitle : getTitle()); // lane name should be leq 50 chars
+                }
             }
         });
         headerBox.add(contentTextField);
@@ -120,12 +124,25 @@ public class RecipeStepPanel extends JPanel {
         this.add(scrollPane, BorderLayout.CENTER);
     }
 
+    public BurpOperation getOperation() {
+        return this.operation;
+    }
+
     public void addComponent(Component comp, int index) {
         operationsLine.add(comp, addContraints, index);
         operationsLine.revalidate();
         operationsLine.repaint();
         if (comp instanceof Operation) {
+            ((Operation) comp).setRecipeStepPanel(this);
             ((Operation) comp).setChangeListener(this.changeListener);
+            this.changeListener.stateChanged(new ChangeEvent(this));
+        }
+    }
+
+    public void updateUI() {
+        if(operationsLine != null) {
+            operationsLine.revalidate();
+            operationsLine.repaint();
             this.changeListener.stateChanged(new ChangeEvent(this));
         }
     }

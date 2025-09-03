@@ -9,8 +9,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.EOFException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -21,7 +19,6 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -45,13 +42,15 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.apache.commons.lang3.NotImplementedException;
+
 import burp.BurpObjectFactory;
 import burp.CstcObjectFactory;
 import burp.Logger;
 import burp.api.montoya.core.ByteArray;
-import burp.api.montoya.http.message.requests.HttpRequest;
-import burp.api.montoya.http.message.responses.HttpResponse;
 import de.usd.cstchef.Utils.MessageType;
+import de.usd.cstchef.operations.utils.RequestToResponse;
+import de.usd.cstchef.view.RecipeStepPanel;
 import de.usd.cstchef.view.ui.FormatTextField;
 import de.usd.cstchef.view.ui.VariableTextArea;
 import de.usd.cstchef.view.ui.VariableTextField;
@@ -91,6 +90,8 @@ public abstract class Operation extends JPanel {
 
     private int operationSkip = 0;
     private int laneSkip = 0;
+
+    private RecipeStepPanel lane;
 
     private final String httpRequestRegex = "(GET|POST|HEAD|PUT|DELETE|CONNECT|OPTIONS|TRACE|PATCH)\\s/\\S*\\sHTTP/\\d(\\.\\d)?";
     private final String httpResponseRegex = "HTTP/\\d(\\.\\d)?\\s\\d{3}\\s(\\w*\\s?)*";
@@ -211,6 +212,20 @@ public abstract class Operation extends JPanel {
 
         this.createUI();
         this.refreshColors();
+    }
+
+    public void setRecipeStepPanel(RecipeStepPanel recipeStepPanel) {
+        this.lane = recipeStepPanel;
+    }
+
+    public RecipeStepPanel getRecipeStepPanel() {
+        return this.lane;
+    }
+
+    public void updateStepPanel() {
+        if(this.lane != null) {
+            this.lane.updateUI();
+        }
     }
 
     public String getComment() {
@@ -395,6 +410,23 @@ public abstract class Operation extends JPanel {
         refreshColors();
     }
 
+     public Map<String, Component> getUIElements() {
+        return this.uiElements;
+     }
+
+     public Component[] getContentBoxComponents() {
+        return this.contentBox.getComponents();
+     }
+
+     // remove every element starting with index (need to remove from uiElements too)
+    protected void clearContentBox(int index) {
+        for(int i = index; i < this.contentBox.getComponentCount(); i++) {
+            this.contentBox.remove(i);
+        }
+
+        refreshColors();
+    }
+
     @Override
     public Dimension getPreferredSize() {
         Dimension dim = super.getPreferredSize();
@@ -403,9 +435,16 @@ public abstract class Operation extends JPanel {
         return dim;
     }
 
-    public ByteArray performOperation(ByteArray input) {
+    public ByteArray performOperation(ByteArray input, ByteArray requestToResponse) {
+        ByteArray result = null;
         try {
-            ByteArray result = this.perform(input);
+            if(this instanceof RequestToResponse) {
+                result = this.perform(input, requestToResponse);
+            }
+            else {
+                result = this.perform(input);
+            }
+
             this.setErrorMessage(null);
             return result;
         } catch (EOFException e) {
@@ -514,6 +553,10 @@ public abstract class Operation extends JPanel {
     }
 
     protected abstract ByteArray perform(ByteArray input) throws Exception;
+
+    public ByteArray perform(ByteArray input, ByteArray requestToResponse) throws Exception {
+        throw new NotImplementedException("This method is not implemented for the operation " + this.getClass().getAnnotation(OperationInfos.class).name());
+    }
 
     public void createUI() {
 

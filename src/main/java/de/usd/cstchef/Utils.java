@@ -1,19 +1,14 @@
 package de.usd.cstchef;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -23,7 +18,6 @@ import java.util.zip.ZipInputStream;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
@@ -38,9 +32,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 
@@ -50,7 +41,6 @@ import burp.CstcObjectFactory;
 import burp.Logger;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
-import burp.api.montoya.http.handler.ResponseAction;
 import burp.api.montoya.http.message.Cookie;
 import burp.api.montoya.http.message.HttpHeader;
 import burp.api.montoya.http.message.requests.HttpRequest;
@@ -72,6 +62,8 @@ import de.usd.cstchef.operations.compression.Deflate;
 import de.usd.cstchef.operations.compression.GUnzip;
 import de.usd.cstchef.operations.compression.Gzip;
 import de.usd.cstchef.operations.compression.Inflate;
+import de.usd.cstchef.operations.compression.Unzip;
+import de.usd.cstchef.operations.compression.Zip;
 import de.usd.cstchef.operations.conditional.NumberCompare;
 import de.usd.cstchef.operations.conditional.RegexMatch;
 import de.usd.cstchef.operations.conditional.StringContains;
@@ -85,6 +77,8 @@ import de.usd.cstchef.operations.dataformat.ToBase64;
 import de.usd.cstchef.operations.dataformat.ToHex;
 import de.usd.cstchef.operations.dataformat.UrlDecode;
 import de.usd.cstchef.operations.dataformat.UrlEncode;
+import de.usd.cstchef.operations.dataformat.FromDecimal;
+import de.usd.cstchef.operations.dataformat.ToDecimal;
 import de.usd.cstchef.operations.datetime.DateTime;
 import de.usd.cstchef.operations.datetime.TimestampOffset;
 import de.usd.cstchef.operations.datetime.TimestampToDateTime;
@@ -168,10 +162,12 @@ import de.usd.cstchef.operations.utils.GetVariable;
 import de.usd.cstchef.operations.utils.NoOperation;
 import de.usd.cstchef.operations.utils.RandomNumber;
 import de.usd.cstchef.operations.utils.RandomUUID;
+import de.usd.cstchef.operations.utils.RequestToResponse;
 import de.usd.cstchef.operations.utils.SetIfEmpty;
+import de.usd.cstchef.operations.utils.StopOperation;
 import de.usd.cstchef.operations.utils.StoreVariable;
+import de.usd.cstchef.operations.utils.UnconditionalJump;
 import de.usd.cstchef.view.View;
-import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 
 public class Utils {
 
@@ -389,32 +385,34 @@ public class Utils {
     public static Class<? extends Operation>[] getOperationsDev() {
         return new Class[] {
                 Addition.class, AddKey.class, AesDecryption.class, AesEncryption.class, And.class,
-                Blake.class, Counter.class, DateTime.class, Deflate.class, DesDecryption.class, DesEncryption.class,
-                Divide.class, DivideList.class, DSTU7564.class, FromBase64.class, FromHex.class,
-                RequestBuilder.class,
-                GetVariable.class, Gost.class, GUnzip.class, Gzip.class, Hmac.class,
-                HttpBodyExtractor.class, HttpCookieExtractor.class, HttpGetExtractor.class,
+                Blake.class,
+                Counter.class, Concatenate.class,
+                DateTime.class, Deflate.class, DesDecryption.class, DesEncryption.class,
+                Divide.class, DivideList.class, DSTU7564.class,
+                FromBase64.class, FromDecimal.class, FromHex.class,
+                GetVariable.class, Gost.class, GUnzip.class, Gzip.class,
+                Hmac.class, HttpBodyExtractor.class, HttpCookieExtractor.class, HttpGetExtractor.class,
                 HttpGetSetter.class, HttpHeaderExtractor.class, HttpHeaderSetter.class, HttpHeaderRemove.class,
                 HttpJsonExtractor.class, HttpJsonSetter.class, HttpMethodExtractor.class, HttpMultipartExtractor.class,
-                HttpMultipartSetter.class,
-                HttpPostExtractor.class, HttpPostSetter.class, PlainRequest.class, HttpSetBody.class,
+                HttpMultipartSetter.class, HttpPostExtractor.class, HttpPostSetter.class, HttpSetBody.class,
                 HttpSetCookie.class, HttpSetUri.class, HttpUriExtractor.class, HttpXmlExtractor.class,
-                HttpXmlSetter.class, XmlSetter.class, HtmlEncode.class, HtmlDecode.class, Inflate.class,
-                JsonExtractor.class, JsonSetter.class, JWTDecode.class, JWTSign.class, Length.class,
-                LineExtractor.class,
-                LineSetter.class, MD2.class, MD4.class, MD5.class, Mean.class, Median.class,
-                Multiply.class, MultiplyList.class, NoOperation.class, NumberCompare.class, Prefix.class,
-                RandomNumber.class, RandomUUID.class, ReadFile.class, RegexExtractor.class, Reverse.class,
-                Replace.class,
-                RIPEMD.class, RsaDecryption.class, RsaEncryption.class, RsaSignature.class, SM2Signature.class, SM3.class, SM4Encryption.class, SM4Decryption.class, RegexMatch.class,
+                HttpXmlSetter.class, HtmlEncode.class, HtmlDecode.class,
+                Inflate.class,
+                JsonExtractor.class, JsonSetter.class, JsonBeautifier.class, JWTDecode.class, JWTSign.class,
+                Length.class, LineExtractor.class, LineSetter.class, Lowercase.class, Luhn.class,
+                MD2.class, MD4.class, MD5.class, Mean.class, Median.class, Multiply.class, MultiplyList.class,
+                NoOperation.class, NumberCompare.class,
+                Prefix.class, PlainRequest.class,
+                RandomNumber.class, RandomUUID.class, ReadFile.class, RegexExtractor.class, RegexMatch.class, RequestBuilder.class, Reverse.class,
+                Replace.class, RIPEMD.class, RsaDecryption.class, RsaEncryption.class, RsaSignature.class, RemoveWhitespace.class, RequestToResponse.class,
+                SM2Signature.class, SM3.class, SM4Encryption.class, SM4Decryption.class, SoapMultiSignature.class, StopOperation.class,
                 SetIfEmpty.class, SHA1.class, SHA2.class, SHA3.class, Skein.class, SplitAndSelect.class,
-                StaticString.class, StoreVariable.class, Sub.class, Substring.class, Uppercase.class, Lowercase.class,
-                Subtraction.class,
-                Suffix.class, Sum.class, StringContains.class, StringMatch.class, Strip.class, RemoveWhitespace.class, Tiger.class,
-                TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToHex.class, UnixTimestamp.class,
-                UrlDecode.class, UrlEncode.class,
-                Whirlpool.class, WriteFile.class, XmlFullSignature.class, XmlMultiSignature.class,
-                Xor.class, SoapMultiSignature.class, Luhn.class, Concatenate.class, JsonBeautifier.class
+                StaticString.class, StoreVariable.class, Sub.class, Substring.class, Subtraction.class,
+                Suffix.class, Sum.class, StringContains.class, StringMatch.class, Strip.class,
+                Tiger.class, TimestampOffset.class, TimestampToDateTime.class, ToBase64.class, ToDecimal.class, ToHex.class,
+                UnixTimestamp.class, UrlDecode.class, UrlEncode.class, Uppercase.class, UnconditionalJump.class, Unzip.class,
+                Whirlpool.class, WriteFile.class,
+                XmlFullSignature.class, XmlMultiSignature.class, Xor.class, XmlSetter.class, Zip.class
         };
     }
 
