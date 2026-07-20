@@ -36,6 +36,11 @@ public class CipherUtils {
                     } else if (type.equals("SupportedPaddings")) {
                         String[] paddings = property.split("\\|");
                         info.setPaddings(paddings);
+
+                        if(key.equals("Cipher.RSA SupportedPaddings")) {
+                            String[] rsaPaddings = {"NOPADDING", "PKCS1PADDING", "OAEPPADDING"};
+                            info.setPaddings(rsaPaddings);
+                        }
                     }
                     this.algos.put(cipherName, info);
                 }

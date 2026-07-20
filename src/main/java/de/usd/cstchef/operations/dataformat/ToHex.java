@@ -20,7 +20,6 @@ public class ToHex extends Operation {
             put("None", new Delimiter(""));
             put("Space", new Delimiter(" "));
             put("Comma", new Delimiter(","));
-            put("Colon", new Delimiter(":"));
             put("Semi-colon", new Delimiter(";"));
             put("Colon", new Delimiter(":"));
             put("Line feed", new Delimiter("\n"));

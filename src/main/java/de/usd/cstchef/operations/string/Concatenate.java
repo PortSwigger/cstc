@@ -18,8 +18,10 @@ public class Concatenate extends Operation {
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
 
-        String delim = delimiter.getText();
         VariableStore.getInstance().setVariable("input", input);
+
+        String delim = delimiter.getText();
+        //VariableStore.getInstance().setVariable("input", input);
 
         String[] components = text.getText().split(delim);
         String trimed;
@@ -27,8 +29,8 @@ public class Concatenate extends Operation {
         for (int i = 0; i < components.length; i++) {
             trimed = components[i].trim();
 
-            if (trimed.startsWith("$")) {
-                value[i] = VariableStore.getInstance().getVariable(trimed).getBytes();
+            if (trimed.startsWith("$") && trimed.length() > 1) {
+                value[i] = VariableStore.getInstance().getVariable(trimed.replace("$", "")).getBytes();
             } else {
                 value[i] = trimed.getBytes();
             }

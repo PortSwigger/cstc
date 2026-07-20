@@ -8,7 +8,7 @@ import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.operations.OperationCategory;
 
-@OperationInfos(name = "Get HTTP URI", category = OperationCategory.EXTRACTORS, description = "Extracts the URI of a HTTP request.")
+@OperationInfos(name = "Get HTTP URI", category = OperationCategory.EXTRACTORS, description = "Extracts the URI of an HTTP request.")
 public class HttpUriExtractor extends Operation {
 
     protected JCheckBox checkbox;

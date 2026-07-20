@@ -150,6 +150,43 @@ public class CstcHttpRequest implements HttpRequest {
     }
 
     @Override
+    public HttpRequest withUpdatedHeader(String name, String value) {
+        byte[] requestBytes = this.httpRequest.getBytes();
+        String request = new String(requestBytes);
+
+        if(request.contains("\n" + name + ": ")) {
+            request = request.replaceAll(name + ":\s(.)*", name + ": " + value);
+        }
+        else {
+            throw new IllegalArgumentException("Header not found.");
+        }
+
+        this.httpRequest = CstcByteArray.byteArray(request);
+        return this;
+    }
+
+    @Override
+    public ByteArray toByteArray() {
+        return this.httpRequest;
+    }
+
+    @Override
+    public HttpRequest withRemovedHeader(String name) {
+        byte[] requestBytes = this.httpRequest.getBytes();
+        String request = new String(requestBytes);
+
+        if(request.contains("\n" + name + ": ")) {
+            request = request.replaceAll(name + ":\s(.)*[\r\n]{1,2}", "");
+        }
+        else {
+            throw new IllegalArgumentException("Header not found.");
+        }
+
+        this.httpRequest = CstcByteArray.byteArray(request);
+        return this;
+    }
+
+    @Override
     public boolean isInScope() {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'isInScope'");
@@ -294,12 +331,6 @@ public class CstcHttpRequest implements HttpRequest {
     }
 
     @Override
-    public ByteArray toByteArray() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'toByteArray'");
-    }
-
-    @Override
     public HttpRequest copyToTempFile() {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'copyToTempFile'");
@@ -420,12 +451,6 @@ public class CstcHttpRequest implements HttpRequest {
     }
 
     @Override
-    public HttpRequest withUpdatedHeader(String name, String value) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'withUpdatedHeader'");
-    }
-
-    @Override
     public HttpRequest withUpdatedHeader(HttpHeader header) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'withUpdatedHeader'");
@@ -441,12 +466,6 @@ public class CstcHttpRequest implements HttpRequest {
     public HttpRequest withUpdatedHeaders(HttpHeader... headers) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'withUpdatedHeaders'");
-    }
-
-    @Override
-    public HttpRequest withRemovedHeader(String name) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'withRemovedHeader'");
     }
 
     @Override

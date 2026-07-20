@@ -12,13 +12,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import burp.BurpUtils;
-import burp.api.montoya.core.ToolType;
 import de.usd.cstchef.view.filter.Filter;
 import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 
 public class RequestFilterDialog extends JPanel {
 
     private static RequestFilterDialog instance = null;
+    private static final List<String> FILTER_LABELS = Arrays.asList("Proxy", "Repeater", "Scanner", "Intruder", "Extender", "Sequencer");
+    private static final int PANEL_COLUMN_GAP = 12;
 
     public static RequestFilterDialog getInstance() {
         if (RequestFilterDialog.instance == null) {
@@ -28,69 +29,82 @@ public class RequestFilterDialog extends JPanel {
     }
 
     private RequestFilterDialog() {
-        this.setLayout(new GridLayout(0, 3));
+        rebuild();
+    }
 
-        JPanel incomingPanel = createPanel(BurpOperation.INCOMING);
-        JPanel outgoingPanel = createPanel(BurpOperation.OUTGOING);
+    private void rebuild() {
+        List<RecipePanel> filterableRecipePanels = BurpUtils.getInstance().getView().getFilterableRecipePanels();
+        this.setLayout(new GridLayout(0, filterableRecipePanels.size() + 1, PANEL_COLUMN_GAP, 0));
+        this.removeAll();
+        this.add(createLabelPanel());
 
+        for (RecipePanel recipePanel : filterableRecipePanels) {
+            this.add(createPanel(recipePanel));
+        }
+
+        this.revalidate();
+        this.repaint();
+    }
+
+    private JPanel createLabelPanel() {
         JPanel labelPanel = new JPanel();
-        labelPanel.setLayout(new GridLayout(7, 0));
+        labelPanel.setLayout(new GridLayout(FILTER_LABELS.size() + 1, 0));
         labelPanel.add(new JLabel(""));
-        List<String> labels = Arrays.asList("Proxy", "Repeater", "Scanner", "Intruder", "Extender", "Sequencer");
-        for (String label : labels) {
+        for (String label : FILTER_LABELS) {
             labelPanel.add(new JLabel(label));
         }
 
-        this.removeAll();
-        this.add(labelPanel);
-        this.add("Outgoing", outgoingPanel);
-        this.add("Incoming", incomingPanel);
-
+        return labelPanel;
     }
 
-    private JPanel createPanel(BurpOperation operation) {
-        if (BurpUtils.getInstance().getFilterState().getFilterMask(operation).isEmpty()) {
-            BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(new Filter(ToolType.PROXY, ToolType.PROXY.ordinal()), false);
-            BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(new Filter(ToolType.REPEATER, ToolType.REPEATER.ordinal()), false);
-            BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(new Filter(ToolType.SCANNER, ToolType.SCANNER.ordinal()), false);
-            BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(new Filter(ToolType.INTRUDER, ToolType.INTRUDER.ordinal()), false);
-            BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(new Filter(ToolType.EXTENSIONS, ToolType.EXTENSIONS.ordinal()), false);
-            BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(new Filter(ToolType.SEQUENCER, ToolType.SEQUENCER.ordinal()), false);
-        }
+    private JPanel createPanel(RecipePanel recipePanel) {
+        BurpOperation operation = recipePanel.getOperation();
+        String recipePanelName = recipePanel.getRecipeName();
+        LinkedHashMap<Filter, Boolean> filterMask = BurpUtils.getInstance().getFilterState().getFilterMask(operation, recipePanelName);
 
         JPanel panel = new JPanel();
-        panel.add(new JLabel(operation.toString()));
-                for (Map.Entry<Filter, Boolean> entry : BurpUtils.getInstance().getFilterState().getFilterMask(operation).entrySet()) {
+        panel.setLayout(new GridLayout(FILTER_LABELS.size() + 1, 0));
+        panel.add(new JLabel(recipePanelName));
+        for (Map.Entry<Filter, Boolean> entry : filterMask.entrySet()) {
             Filter filter = entry.getKey();
             boolean selected = entry.getValue();
+            int selectionOrder = BurpUtils.getInstance().getFilterState()
+                    .getFilterSelectionOrder(operation, recipePanelName, filter.getToolType());
 
             JCheckBox box = new JCheckBox();
             box.setSelected(selected);
+            box.setText(createSelectionOrderLabel(selectionOrder));
             box.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    // set Filter
-                    BurpUtils.getInstance().getFilterState().getFilterMask(operation).put(filter, box.isSelected());
+                    BurpUtils.getInstance().getFilterState()
+                            .updateFilterSelection(operation, recipePanelName, filter.getToolType(), box.isSelected());
 
-                    // disable autobake
                     BurpUtils.getInstance().getView().preventRaceConditionOnVariables();
 
-                    // remove inactivity warning
                     BurpUtils.getInstance().getView().updateInactiveWarnings();
+                    rebuild();
                 }
             });
             panel.add(box);
         }
 
-        panel.setLayout(new GridLayout(7, 0));
         return panel;
     }
 
     public void updateFilterSettings(){
-        RequestFilterDialog.instance = new RequestFilterDialog();
+        rebuild();
     }
 
-    public LinkedHashMap<Filter, Boolean> getFilterMask(BurpOperation operation) {
-        return BurpUtils.getInstance().getFilterState().getFilterMask(operation);
+    public LinkedHashMap<Filter, Boolean> getFilterMask(BurpOperation operation, String recipePanelName) {
+        return BurpUtils.getInstance().getFilterState().getFilterMask(operation, recipePanelName);
+    }
+
+    private String createSelectionOrderLabel(int selectionOrder) {
+        if (selectionOrder <= 0) {
+            return "";
+        }
+
+        return Integer.toString(selectionOrder);
     }
 }

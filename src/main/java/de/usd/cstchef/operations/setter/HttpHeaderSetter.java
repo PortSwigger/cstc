@@ -10,7 +10,7 @@ import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.operations.OperationCategory;
 
-@OperationInfos(name = "Set HTTP Header", category = OperationCategory.SETTER, description = "Set a HTTP header to the specified value.")
+@OperationInfos(name = "Set HTTP Header", category = OperationCategory.SETTER, description = "Set an HTTP header to the specified value.")
 public class HttpHeaderSetter extends SetterOperation {
 
     private JCheckBox addIfNotPresent;

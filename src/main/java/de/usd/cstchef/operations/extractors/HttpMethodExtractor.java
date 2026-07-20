@@ -8,7 +8,7 @@ import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.operations.OperationCategory;
 
-@OperationInfos(name = "Get HTTP Method", category = OperationCategory.EXTRACTORS, description = "Extracts the method of a HTTP request.")
+@OperationInfos(name = "Get HTTP Method", category = OperationCategory.EXTRACTORS, description = "Extracts the method of an HTTP request.")
 public class HttpMethodExtractor extends Operation {
 
     @Override

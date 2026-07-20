@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.BadLocationException;
@@ -35,6 +36,20 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
     private boolean isChangedViaContextMenu = false;
     private boolean isInputRestored = false;
 
+    private void persistInput(DocumentEvent e, JTextArea textArea) {
+        try {
+            RecipePanel recipePanel = (RecipePanel) SwingUtilities.getAncestorOfClass(RecipePanel.class, textArea);
+            String persistenceKey = recipePanel != null ? recipePanel.getPersistedInputKey() : operation + "-Input";
+            api.persistence().extensionData().setString(persistenceKey, e.getDocument().getText(0, e.getDocument().getLength()));
+            isInputRestored = true;
+            if(!isChangedViaContextMenu) {
+                requestToResponse = null;
+            }
+        } catch (BadLocationException e1) {
+            return;
+        }
+    }
+
     public BurpEditorWrapper(CstcMessageEditorController controller, BurpOperation operation, Boolean isInputEditor){
         this.api = BurpUtils.getInstance().getApi();
         this.operation = operation;
@@ -60,26 +75,17 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
 
                 @Override
                 public void changedUpdate(DocumentEvent e) {
-                    try {
-                        if(isInputRestored) {
-                            api.persistence().extensionData().setString(operation + "Input", e.getDocument().getText(0, e.getDocument().getLength()));
-                        }
-                        if(!isChangedViaContextMenu) {
-                            requestToResponse = null;
-                        }
-                    } catch (BadLocationException e1) {
-                        return;
-                    }
+                    persistInput(e, textArea);
                 }
 
                 @Override
                 public void insertUpdate(DocumentEvent e) {
-                    return;
+                    persistInput(e, textArea);
                 }
 
                 @Override
                 public void removeUpdate(DocumentEvent e) {
-                    return;
+                    persistInput(e, textArea);
                 }
             });
         }
@@ -219,5 +225,11 @@ public class BurpEditorWrapper implements HttpRequestEditor, HttpResponseEditor,
             }
         }
         return null;
+    }
+
+    @Override
+    public void setCaretPosition(int arg0) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setCaretPosition'");
     }
 }

@@ -7,8 +7,12 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.EOFException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -26,14 +30,21 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.MatteBorder;
@@ -84,9 +95,14 @@ public abstract class Operation extends JPanel {
     private JTextArea errorArea;
     private Box contentBox;
     private Map<String, Component> uiElements;
+    private Popup helpPopup;
+    private JComponent helpPopupContent;
+    private Timer helpHideTimer;
 
     private String comment;
     private JButton commentBtn;
+
+    private JButton removeBtn;
 
     private int operationSkip = 0;
     private int laneSkip = 0;
@@ -113,6 +129,7 @@ public abstract class Operation extends JPanel {
 
         // add header
         JPanel header = new JPanel();
+        header.setOpaque(false);
         header.setBackground(new Color(0, 0, 0, 0)); // transparent
 
         BoxLayout layout = new BoxLayout(header, BoxLayout.X_AXIS);
@@ -128,20 +145,22 @@ public abstract class Operation extends JPanel {
         disableBtn.setToolTipText("Disable");
         JButton breakpointBtn = createIconButton(Operation.breakIcon);
         breakpointBtn.setToolTipText("Breakpoint");
-        JButton removeBtn = createIconButton(Operation.removeIcon);
+        removeBtn = createIconButton(Operation.removeIcon);
         removeBtn.setToolTipText("Remove");
         JButton helpBtn = createIconButton(Operation.helpIcon);
-        helpBtn.setToolTipText(opInfos.description());
+        installHelpPopup(helpBtn, opInfos.description());
         commentBtn = createIconButton(noCommentIcon);
 
         commentBtn.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 commentBtn.setToolTipText(getComment());
                 String comment = JOptionPane.showInputDialog("Edit comment:", commentBtn.getToolTipText());
-                commentBtn.setToolTipText(comment);
-                setComment(comment);
-                ImageIcon newIcon = comment.isEmpty() ? Operation.noCommentIcon : Operation.commentIcon;
-                commentBtn.setIcon(newIcon);
+                if(comment != null) {
+                    commentBtn.setToolTipText(comment);
+                    setComment(comment);
+                    ImageIcon newIcon = comment.isEmpty() ? Operation.noCommentIcon : Operation.commentIcon;
+                    commentBtn.setIcon(newIcon);
+                }
             }
         });
         
@@ -169,16 +188,10 @@ public abstract class Operation extends JPanel {
                 notifyChange();
             }
         });
-        JPanel me = this;
         removeBtn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                Container parent = getParent();
-                onRemove();
-                parent.remove(me);
-                parent.validate();
-                parent.repaint();
-                notifyChange();
+                triggerRemove();
             }
         });
 
@@ -200,6 +213,7 @@ public abstract class Operation extends JPanel {
         errorArea.setEditable(false);
         errorArea.setLineWrap(true);
         errorArea.setWrapStyleWord(true);
+        errorArea.setOpaque(false);
         errorArea.setBackground(new Color(0, 0, 0, 0));
         errorArea.setFont(f.deriveFont(f.getStyle() | Font.BOLD));
         errorArea.setFocusable(false);
@@ -214,6 +228,18 @@ public abstract class Operation extends JPanel {
         this.refreshColors();
     }
 
+    public void triggerRemove() {
+        Container parent = getParent();
+        disposeHelpPopup();
+        onRemove();
+        if (parent != null) {
+            parent.remove(this);
+            parent.revalidate();
+            parent.repaint();
+        }
+        notifyChange();
+    }
+
     public void setRecipeStepPanel(RecipeStepPanel recipeStepPanel) {
         this.lane = recipeStepPanel;
     }
@@ -224,7 +250,8 @@ public abstract class Operation extends JPanel {
 
     public void updateStepPanel() {
         if(this.lane != null) {
-            this.lane.updateUI();
+            this.lane.refreshOperationsView();
+            notifyChange();
         }
     }
 
@@ -316,13 +343,142 @@ public abstract class Operation extends JPanel {
 
     private JButton createIconButton(ImageIcon icon) {
         JButton btn = new JButton();
+        btn.setOpaque(false);
+        btn.setBackground(new Color(0, 0, 0, 0));
         btn.setBorder(BorderFactory.createEmptyBorder());
+        btn.setBorderPainted(false);
         btn.setIcon(icon);
         btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setRolloverEnabled(false);
+        btn.setRequestFocusEnabled(false);
+        btn.setFocusable(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.RIGHT_ALIGNMENT);
 
         return btn;
+    }
+
+    private void installHelpPopup(JButton helpBtn, String helpText) {
+        helpBtn.setToolTipText(null);
+        this.helpHideTimer = new Timer(200, e -> hideHelpPopup());
+        this.helpHideTimer.setRepeats(false);
+
+        helpBtn.addActionListener(e -> SwingUtilities.invokeLater(() -> showHelpPopup(helpBtn, helpText)));
+
+        MouseAdapter hoverListener = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (helpHideTimer != null && helpHideTimer.isRunning()) {
+                    helpHideTimer.stop();
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                scheduleHelpPopupHide();
+            }
+        };
+
+        helpBtn.addMouseListener(hoverListener);
+    }
+
+    private void showHelpPopup(JButton helpBtn, String helpText) {
+        if (this.helpHideTimer != null && this.helpHideTimer.isRunning()) {
+            this.helpHideTimer.stop();
+        }
+
+        disposeHelpPopup();
+
+        this.helpPopupContent = createHelpPopupContent(helpText);
+        Dimension popupSize = this.helpPopupContent.getPreferredSize();
+
+        Point location = helpBtn.getLocationOnScreen();
+        Rectangle screenBounds = helpBtn.getGraphicsConfiguration().getBounds();
+        int x = location.x;
+        int y = location.y + helpBtn.getHeight() + 8;
+
+        if (x + popupSize.width > screenBounds.x + screenBounds.width) {
+            x = screenBounds.x + screenBounds.width - popupSize.width - 10;
+        }
+        if (y + popupSize.height > screenBounds.y + screenBounds.height) {
+            y = Math.max(screenBounds.y + 10, location.y - popupSize.height - 8);
+        }
+
+        x = Math.max(screenBounds.x + 10, x);
+        y = Math.max(screenBounds.y + 10, y);
+
+        this.helpPopup = PopupFactory.getSharedInstance().getPopup(helpBtn, this.helpPopupContent, x, y);
+        this.helpPopup.show();
+        helpBtn.getModel().setArmed(false);
+        helpBtn.getModel().setPressed(false);
+    }
+
+    private JComponent createHelpPopupContent(String helpText) {
+        JEditorPane helpViewer = new JEditorPane("text/html", helpText);
+        helpViewer.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+        helpViewer.setEditable(false);
+        helpViewer.setOpaque(true);
+        helpViewer.setBackground(Color.WHITE);
+        helpViewer.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        helpViewer.setCaretPosition(0);
+
+        JScrollPane scrollPane = new JScrollPane(helpViewer);
+        scrollPane.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        scrollPane.setPreferredSize(new Dimension(620, 420));
+        scrollPane.setOpaque(true);
+
+        MouseAdapter popupHoverListener = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (helpHideTimer != null && helpHideTimer.isRunning()) {
+                    helpHideTimer.stop();
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                scheduleHelpPopupHide();
+            }
+        };
+
+        attachHoverListener(scrollPane, popupHoverListener);
+
+        return scrollPane;
+    }
+
+    private void attachHoverListener(Component component, MouseAdapter listener) {
+        component.addMouseListener(listener);
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                attachHoverListener(child, listener);
+            }
+        }
+    }
+
+    private void scheduleHelpPopupHide() {
+        if (this.helpHideTimer != null) {
+            this.helpHideTimer.restart();
+        }
+    }
+
+    private void hideHelpPopup() {
+        if (this.helpPopup != null) {
+            this.helpPopup.hide();
+            this.helpPopup = null;
+            this.helpPopupContent = null;
+        }
+    }
+
+    private void disposeHelpPopup() {
+        if (this.helpHideTimer != null && this.helpHideTimer.isRunning()) {
+            this.helpHideTimer.stop();
+        }
+        if (this.helpPopup != null) {
+            this.helpPopup.hide();
+            this.helpPopup = null;
+            this.helpPopupContent = null;
+        }
     }
 
     private void refreshColors() {

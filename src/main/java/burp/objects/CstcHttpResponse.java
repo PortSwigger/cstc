@@ -97,6 +97,16 @@ public class CstcHttpResponse implements HttpResponse {
     }
 
     @Override
+    public boolean hasCookie(String name) {
+        return this.cookieValue(name) != null;
+    }
+
+    @Override
+    public String toString() {
+        return new String(this.httpResponse.getBytes());
+    }
+
+    @Override
     public short statusCode() {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'statusCode'");
@@ -118,12 +128,6 @@ public class CstcHttpResponse implements HttpResponse {
     public Cookie cookie(String name) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'cookie'");
-    }
-
-    @Override
-    public boolean hasCookie(String name) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'hasCookie'");
     }
 
     @Override

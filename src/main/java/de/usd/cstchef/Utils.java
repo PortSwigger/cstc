@@ -9,10 +9,12 @@ import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -35,11 +37,9 @@ import org.w3c.dom.NodeList;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 
-import burp.BurpUtils;
 import burp.BurpObjectFactory;
 import burp.CstcObjectFactory;
 import burp.Logger;
-import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.message.Cookie;
 import burp.api.montoya.http.message.HttpHeader;
@@ -130,6 +130,7 @@ import de.usd.cstchef.operations.setter.HttpHeaderSetter;
 import de.usd.cstchef.operations.setter.HttpJsonSetter;
 import de.usd.cstchef.operations.setter.HttpMultipartSetter;
 import de.usd.cstchef.operations.setter.HttpPostSetter;
+import de.usd.cstchef.operations.setter.HttpRemoveCookie;
 import de.usd.cstchef.operations.setter.HttpSetBody;
 import de.usd.cstchef.operations.setter.HttpSetCookie;
 import de.usd.cstchef.operations.setter.HttpSetUri;
@@ -179,33 +180,20 @@ public class Utils {
     }
 
     public static String replaceVariables(String text) {
-        HashMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
+        TreeMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
         for (Entry<String, ByteArray> entry : variables.entrySet()) {
-            // TODO this is easy, but very bad, how to do this right?
-            text = text.replace("$" + entry.getKey(), entry.getValue().toString());
+            Pattern pattern = Pattern.compile(Pattern.quote("$" + entry.getKey()));
+            Matcher matcher = pattern.matcher(text);
+
+            text = matcher.replaceAll(Matcher.quoteReplacement(new String(entry.getValue().getBytes())));
         }
 
         return text;
     }
 
     public static ByteArray replaceVariablesByte(ByteArray bytes) {
-        HashMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
-        MontoyaApi api = BurpUtils.getInstance().getApi();
-
-        ByteArray currentKey;
-        for (Entry<String, ByteArray> entry : variables.entrySet()) {
-
-            int offset = 0;
-            currentKey = ByteArray.byteArray("$" + entry.getKey());
-
-            while (offset >= 0) {
-                offset = api.utilities().byteUtils().indexOf(bytes.getBytes(), currentKey.getBytes(), true, offset,
-                        bytes.length());
-                if (offset >= 0)
-                    bytes = insertAtOffset(bytes, offset, offset + currentKey.length(), entry.getValue());
-            }
-        }
-        return bytes;
+        String result = replaceVariables(new String(bytes.getBytes()));
+        return factory.createByteArray(result);
     }
 
     public static ByteArray httpRequestCookieExtractor(HttpRequest request, String cookieName){
@@ -394,7 +382,7 @@ public class Utils {
                 Hmac.class, HttpBodyExtractor.class, HttpCookieExtractor.class, HttpGetExtractor.class,
                 HttpGetSetter.class, HttpHeaderExtractor.class, HttpHeaderSetter.class, HttpHeaderRemove.class,
                 HttpJsonExtractor.class, HttpJsonSetter.class, HttpMethodExtractor.class, HttpMultipartExtractor.class,
-                HttpMultipartSetter.class, HttpPostExtractor.class, HttpPostSetter.class, HttpSetBody.class,
+                HttpMultipartSetter.class, HttpPostExtractor.class, HttpPostSetter.class, HttpRemoveCookie.class, HttpSetBody.class,
                 HttpSetCookie.class, HttpSetUri.class, HttpUriExtractor.class, HttpXmlExtractor.class,
                 HttpXmlSetter.class, HtmlEncode.class, HtmlDecode.class,
                 Inflate.class,

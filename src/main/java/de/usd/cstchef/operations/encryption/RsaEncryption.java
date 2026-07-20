@@ -14,6 +14,7 @@ import javax.swing.JComboBox;
 
 import org.bouncycastle.util.encoders.Hex;
 
+import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -29,6 +30,10 @@ public class RsaEncryption extends KeystoreOperation {
 
     private VariableTextArea publicKeyTextArea;
 
+    private JComboBox<String> pemPadding;
+    private JComboBox<String> pemOaepHash;
+    private JComboBox<String> pemMgf1Hash;
+
     private JComboBox<String> typeComboBox;
 
     private static String[] inOutModes = new String[] { "Raw", "Hex", "Base64" };
@@ -39,6 +44,8 @@ public class RsaEncryption extends KeystoreOperation {
     protected JComboBox<String> inputMode;
     protected JComboBox<String> outputMode;
     protected JComboBox<String> paddings;
+    protected JComboBox<String> ksOaepHash;
+    protected JComboBox<String> ksMgf1Hash;
 
     private String lastSelection = "PEM";
 
@@ -77,8 +84,10 @@ public class RsaEncryption extends KeystoreOperation {
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(keySpec);
 
-            Cipher cipher = Cipher.getInstance("RSA");
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            Cipher cipher = RsaCipherBuilder.build(Cipher.ENCRYPT_MODE, publicKey,
+                    (String) pemPadding.getSelectedItem(),
+                    (String) pemOaepHash.getSelectedItem(),
+                    (String) pemMgf1Hash.getSelectedItem());
             return factory.createByteArray(cipher.doFinal(input.getBytes()));
         }
         else if(typeComboBox.getSelectedItem().equals("KeyStore")) {
@@ -86,8 +95,18 @@ public class RsaEncryption extends KeystoreOperation {
                 throw new IllegalArgumentException("No certificate available.");
 
             String padding = (String)paddings.getSelectedItem();
-            Cipher cipher = Cipher.getInstance(String.format("%s/%s/%s", algorithm, cipherMode, padding));
-            cipher.init(Cipher.ENCRYPT_MODE, this.cert.getPublicKey());
+            Cipher cipher;
+            if(RsaCipherBuilder.isOaep(padding)) {
+                // Named OAEP transformations (e.g. OAEPWITHSHA-256ANDMGF1PADDING) leave MGF1 at
+                // SHA-1 in SunJCE, so build an explicit OAEPParameterSpec with both chosen digests.
+                cipher = RsaCipherBuilder.build(Cipher.ENCRYPT_MODE, this.cert.getPublicKey(),
+                        RsaCipherBuilder.PADDING_OAEP,
+                        (String) ksOaepHash.getSelectedItem(),
+                        (String) ksMgf1Hash.getSelectedItem());
+            } else {
+                cipher = Cipher.getInstance(String.format("%s/%s/%s", algorithm, cipherMode, padding));
+                cipher.init(Cipher.ENCRYPT_MODE, this.cert.getPublicKey());
+            }
 
             String selectedInputMode = (String)inputMode.getSelectedItem();
             String selectedOutputMode = (String)outputMode.getSelectedItem();
@@ -158,14 +177,35 @@ public class RsaEncryption extends KeystoreOperation {
         CipherUtils utils = CipherUtils.getInstance();
         CipherInfo info = utils.getCipherInfo(this.algorithm);
 
-        this.paddings = new JComboBox<>(info.getPaddings());
+        this.paddings = new JComboBox<>(RsaCipherBuilder.keyStorePaddings(info.getPaddings()));
         this.addUIElement("Padding", this.paddings);
+
+        this.ksOaepHash = new JComboBox<>(RsaCipherBuilder.DIGESTS);
+        this.ksOaepHash.setSelectedItem(RsaCipherBuilder.DEFAULT_DIGEST);
+        this.addUIElement("OAEP Hash", this.ksOaepHash);
+
+        this.ksMgf1Hash = new JComboBox<>(RsaCipherBuilder.DIGESTS);
+        this.ksMgf1Hash.setSelectedItem(RsaCipherBuilder.DEFAULT_DIGEST);
+        this.addUIElement("MGF1 Hash", this.ksMgf1Hash);
 
         this.inputMode = new JComboBox<>(inOutModes);
         this.addUIElement("Input", this.inputMode);
 
         this.outputMode = new JComboBox<>(inOutModes);
         this.addUIElement("Output", this.outputMode);
+
+        // The OAEP/MGF1 digests only apply to OAEP paddings, so only show them then.
+        this.paddings.addActionListener(e -> updateKeyStoreOaepVisibility());
+        updateKeyStoreOaepVisibility();
+    }
+
+    private void updateKeyStoreOaepVisibility() {
+        boolean oaep = RsaCipherBuilder.isOaep((String) this.paddings.getSelectedItem());
+        setRowVisible(this.ksOaepHash, oaep);
+        setRowVisible(this.ksMgf1Hash, oaep);
+        validate();
+        repaint();
+        updateStepPanel();
     }
 
     private void clearUI() {
@@ -185,6 +225,45 @@ public class RsaEncryption extends KeystoreOperation {
     private void createUIForPEM() {
         this.publicKeyTextArea = new VariableTextArea();
         this.addUIElement("Public Key", this.publicKeyTextArea);
+
+        this.pemPadding = new JComboBox<>(RsaCipherBuilder.PADDINGS);
+        this.addUIElement("Padding", this.pemPadding);
+
+        this.pemOaepHash = new JComboBox<>(RsaCipherBuilder.DIGESTS);
+        this.pemOaepHash.setSelectedItem(RsaCipherBuilder.DEFAULT_DIGEST);
+        this.addUIElement("OAEP Hash", this.pemOaepHash);
+
+        this.pemMgf1Hash = new JComboBox<>(RsaCipherBuilder.DIGESTS);
+        this.pemMgf1Hash.setSelectedItem(RsaCipherBuilder.DEFAULT_DIGEST);
+        this.addUIElement("MGF1 Hash", this.pemMgf1Hash);
+
+        // The OAEP/MGF1 digests only apply to OAEP padding, so only show them then.
+        this.pemPadding.addActionListener(e -> updatePemOaepVisibility());
+        updatePemOaepVisibility();
+    }
+
+    // Show the OAEP/MGF1 hash rows only while OAEP padding is selected.
+    private void updatePemOaepVisibility() {
+        boolean oaep = RsaCipherBuilder.PADDING_OAEP.equals(this.pemPadding.getSelectedItem());
+        setRowVisible(this.pemOaepHash, oaep);
+        setRowVisible(this.pemMgf1Hash, oaep);
+        validate();
+        repaint();
+        updateStepPanel();
+    }
+
+    private void setRowVisible(Component comp, boolean visible) {
+        Component row = comp.getParent();
+        Component[] comps = getContentBoxComponents();
+        for (int i = 0; i < comps.length; i++) {
+            if (comps[i] == row) {
+                comps[i].setVisible(visible);
+                if (i + 1 < comps.length) {
+                    comps[i + 1].setVisible(visible); // the spacing strut that follows the row
+                }
+                break;
+            }
+        }
     }
 
     public void updateStepPanel() {

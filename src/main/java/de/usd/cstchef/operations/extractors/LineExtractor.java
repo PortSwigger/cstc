@@ -2,8 +2,6 @@ package de.usd.cstchef.operations.extractors;
 
 import javax.swing.JComboBox;
 
-import burp.BurpUtils;
-import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
 import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.operations.Operation.OperationInfos;
@@ -19,61 +17,43 @@ public class LineExtractor extends Operation {
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
 
-        int lineNumber = 0;
+        int lineNumber = -1;
         try {
             String number = lineNumberField.getText();
-            lineNumber = Integer.valueOf(number);
+            lineNumber += Integer.valueOf(number);
         } catch(Exception e) {
             return input;
         }
 
-        if( lineNumber <= 0 )
-            return input;
-
-        byte[] lineEndings = "\r\n".getBytes();
+        String lineBreak = "\\r\\n";
         switch ((String) this.formatBox.getSelectedItem()) {
         case "\\r\\n":
-            lineEndings = "\r\n".getBytes();
+            lineBreak = "\\r\\n";
             break;
         case "\\r":
-            lineEndings = "\r".getBytes();
+            lineBreak = "\\r";
             break;
         case "\\n":
-            lineEndings = "\n".getBytes();
+            lineBreak = "\\n";
             break;
         }
 
-        MontoyaApi api = BurpUtils.getInstance().getApi();
-        int length = input.length();
 
-        int start = 0;
-        int offset = 0;
-        int counter = 0;
-        while( counter < lineNumber - 1 ) {
-            offset = api.utilities().byteUtils().indexOf(input.getBytes(), lineEndings, false, start, length);
-            if( offset >= 0 ) {
-                start = offset + lineEndings.length;
-                counter++;
-            } else {
-                break;
-            }
-        }
+        String[] inputLines = input.toString().split(lineBreak);
 
-        int end = api.utilities().byteUtils().indexOf(input.getBytes(), lineEndings, false, start, length);
-        if( end < 0 )
-            end = length;
+        if(lineNumber < 0 || lineNumber >= inputLines.length)
+            return input;
 
-        ByteArray result = BurpUtils.subArray(input, start, end);
-        return result;
+        return factory.createByteArray(inputLines[lineNumber]);
     }
 
     @Override
     public void createUI() {
         this.lineNumberField = new VariableTextField();
-        this.addUIElement("Name", this.lineNumberField);
+        this.addUIElement("Line number", this.lineNumberField);
         this.formatBox = new JComboBox<>(new String[] {"\\r\\n", "\\r", "\\n"});
         this.formatBox.setSelectedItem("\\r\\n");
-        this.addUIElement("Lineseperator", this.formatBox);
+        this.addUIElement("Line break", this.formatBox);
     }
 
 }

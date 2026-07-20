@@ -1,17 +1,17 @@
 package de.usd.cstchef;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Comparator;
+import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import burp.BurpUtils;
 import burp.api.montoya.core.ByteArray;
 
 public class VariableStore {
 
     private static VariableStore instance;
 
-    private HashMap<String, ByteArray> variables = new HashMap<>();
+    // reverse sorted by length to be able to replace longest matching variables first by iterating over them via for loop
+    private TreeMap<String, ByteArray> variables = new TreeMap<>(Comparator.comparingInt(String::length).reversed().thenComparing(Comparator.naturalOrder()));
     private ReentrantLock lock = new ReentrantLock();
 
     public static VariableStore getInstance() {
@@ -41,18 +41,17 @@ public class VariableStore {
     }
 
     public synchronized void removeVariable(String key) {
+        if(key == null || key.length() == 0) {
+            return;
+        }
         this.variables.remove(key);
     }
 
-    public synchronized HashMap<String, ByteArray> getVariables() {
-        HashMap<String, ByteArray> variablesCopy = new HashMap<>();
-
-        for (Map.Entry<String, ByteArray> entry : this.variables.entrySet()) {
-            ByteArray orig = entry.getValue();
-            ByteArray newContent = BurpUtils.subArray(orig, 0, orig.length());
-            variablesCopy.put(entry.getKey(), newContent);
-        }
-        return variablesCopy;
+    public synchronized TreeMap<String, ByteArray> getVariables() {
+        // return a copy each time to prevent ConcurrentModificationException
+        TreeMap<String, ByteArray> variablesCopied = new TreeMap<>(Comparator.comparingInt(String::length).reversed().thenComparing(Comparator.naturalOrder()));
+        variablesCopied.putAll(variables);
+        return variablesCopied;
     }
 
 }

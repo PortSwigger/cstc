@@ -18,7 +18,7 @@ public class BurpObjectFactory implements CstcObjectFactory{
 
     @Override
     public ByteArray createByteArray(int i) {
-        return ByteArray.byteArray(i);
+        return ByteArray.byteArrayOfLength(i);
     }
 
     @Override

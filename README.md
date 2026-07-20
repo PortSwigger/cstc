@@ -1,9 +1,4 @@
 
-*Copyright 2017-2025 usd AG*
-
-Licensed under the *GNU General Public License, Version 3.0* (the "License"). You may not use this tool except in compliance with the License.
-You may obtain a copy of the License at https://www.gnu.org/licenses/gpl-3.0.html
-
 ![CSTC](media/CSTC_White_Smaller.png)
 
 ![](https://github.com/usdAG/cstc/workflows/master%20maven%20CI/badge.svg?branch=master)
@@ -97,6 +92,10 @@ Currently the Burp Montoya API doesn't offer a way to change this order automati
 The *CSTC Formatting* tab is available in all of Burp's HTTP message editors and shows the result of applying the recipe currently defined in *Formatting* to the content. It has purely a visual effect, the underlying message is not changed. It is intended for testing recipes and for temporarily visualizing changes to the HTTP message using the operations available in the CSTC.
 
 Only the HTTP request message editor in the *Repeater* has an additional tab called *CSTC*. Here, the recipe currently defined in *Outgoing* is applied to the request, making it visible how the request is sent to the server **if** the CSTC is activated for the *Repeater*.
+
+### I have an HTTP request or response that already contains variables defined using the `${name}` syntax. How do I resolve them using CSTC?
+
+You can use the *Concatenate* operation for this. The predefined variable `$input` allows you to access the input of the recipe and output it, with variables being resolved along the way. This works in exactly the same way with text that has already been manipulated in CSTC. Simply save it in a variable and use this in *Concatenate* instead.
 
 ### How to Add Custom Operations to the CSTC?
 

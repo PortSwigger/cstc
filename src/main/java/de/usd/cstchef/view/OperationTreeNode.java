@@ -15,7 +15,7 @@ public class OperationTreeNode extends DefaultMutableTreeNode {
         super();
         OperationInfos infos = operationClass.getAnnotation(OperationInfos.class);
         this.name = infos.name();
-        this.toolTipText = infos.description();
+        //this.toolTipText = infos.description();
 
         this.operationClass = operationClass;
     }

@@ -1,87 +1,94 @@
 package de.usd.cstchef.operations.setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 
-import burp.BurpUtils;
-import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.core.ByteArray;
-import de.usd.cstchef.Utils;
 import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.operations.OperationCategory;
+import de.usd.cstchef.view.ui.VariableTextArea;
+import de.usd.cstchef.view.ui.VariableTextField;
 
 @OperationInfos(name = "Line Setter", category = OperationCategory.SETTER, description = "Sets a line to the specified value.")
 public class LineSetter extends SetterOperation {
 
+    private VariableTextField lineNumberField;
+    private VariableTextArea content;
     private JCheckBox append;
     private JComboBox<String> formatBox;
 
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
 
-        int lineNumber;
+        int lineNumber = -1;
         try {
-            String number = getWhere();
-            lineNumber = Integer.valueOf(number);
+            String number = lineNumberField.getText();
+            lineNumber += Integer.valueOf(number);
         } catch( Exception e ) {
             return input;
         }
 
-        if( lineNumber <= 0 )
-            return input;
-
-        ByteArray newValue = getWhatBytes();
-        ByteArray lineEndings = factory.createByteArray("\r\n");
+        String lineBreak = "\\r\\n";
         switch ((String) this.formatBox.getSelectedItem()) {
         case "\\r\\n":
-            lineEndings = factory.createByteArray("\r\n");
+            lineBreak = "\\r\\n";
             break;
         case "\\r":
-            lineEndings = factory.createByteArray("\r");
+            lineBreak = "\\r";
             break;
         case "\\n":
-            lineEndings = factory.createByteArray("\n");
+            lineBreak = "\\n";
             break;
         }
 
-        MontoyaApi api = BurpUtils.getInstance().getApi();
-        int length = input.length();
+        List<String> inputLines = new ArrayList<String>();
+        for(String str : input.toString().split(lineBreak)) {
+            inputLines.add(str);
+        }
 
-        int start = 0;
-        int offset = 0;
-        int counter = 0;
-        while( counter < lineNumber - 1 ) {
-            offset = api.utilities().byteUtils().indexOf(input.getBytes(), lineEndings.getBytes(), false, start, length);
-            if( offset >= 0 ) {
-                start = offset + lineEndings.length();
-                counter++;
-            } else {
-                break;
+        if(lineNumber < 0 || lineNumber >= inputLines.size())
+            return input;
+
+        if(!append.isSelected()) {
+            inputLines.set(lineNumber, content.getText());
+        }
+        else {
+            if(lineNumber == -1) {
+                lineNumber = 0;
             }
+            inputLines.add(lineNumber, content.getText());
         }
 
-        int end = api.utilities().byteUtils().indexOf(input.getBytes(), lineEndings.getBytes(), false, start, length);
-        if( end < 0 )
-            end = length;
-
-        if( append.isSelected() ) {
-            ByteArray value = lineEndings.withAppended(newValue);
-            return Utils.insertAtOffset(input, end, end, value);
-        } else {
-            return Utils.insertAtOffset(input, start, end, newValue);
+        String result;
+        if(lineBreak.equals("\r\n")) {
+            result = String.join("\r\n", inputLines);
         }
+        else if(lineBreak.equals("\r")) {
+            result = String.join("\r", inputLines);
+        }
+        else {
+            result = String.join("\n", inputLines);
+        }
+
+        return factory.createByteArray(result);
     }
 
     @Override
     public void createUI() {
-        super.createUI();
-        this.append = new JCheckBox("Insert below");
+        this.lineNumberField = new VariableTextField();
+        this.addUIElement("Line number", this.lineNumberField);
+        this.append = new JCheckBox("Insert at");
         this.append.setSelected(false);
         this.addUIElement(null, this.append, "checkbox1");
+        this.content = new VariableTextArea();
+        this.addUIElement("Content", this.content);
 
         this.formatBox = new JComboBox<>(new String[] {"\\r\\n", "\\r", "\\n"});
         this.formatBox.setSelectedItem("\\r\\n");
-        this.addUIElement("Lineseperator", this.formatBox);
+        this.addUIElement("Line break", this.formatBox);
     }
 
 }

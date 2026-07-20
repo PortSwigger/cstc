@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.3.7] - 2026-07-10
+
+### Added
+* Multiple recipe panels for outgoing requests and incoming responses
+* CSTC menu to Burp's menu bar to show the filter status and edit the filter
+* Verbose syntax information for JSON and XML operations
+* Remove Cookie operation
+* Checkbox to automatically update the Content-Length header in a recipe panel
+* Extension name highlighting when a request or response is sent to the extension
+* Button to delete variables in the variable window
+* Context menu in recipe lanes to add or delete lanes at a certain position
+* Combo box to RSA operations to manually select hash algorithms for digest and MGF1
+* Example use cases to default panels when the extension is loaded for the first time
+
+### Changed
+* Improve the recipe panel layout to keep buttons and checkboxes visible during resizing
+* Improve Read File operation to use a base path where it is allowed to read files
+* Change Deflate and Inflate operations to use Montoya API
+* Refactor Line Extractor and Line Setter operations to use more efficient code and rename their parameters
+* Improve Set HTTP JSON operation to use JsonPath syntax for requests and responses
+* Change message editor panels to use RequestEditor instead of RawEditor
+* Change filter hotkey to work from any message editor tab
+
+### Fixed
+* Fix operation buttons visually glitching on clicks
+* Fix variable matching being non-deterministic in some edge cases
+* Fix IndexOutOfBoundsException in Byte Key operation
+* Fix typos in various parts of the extension
+* Fix duplicate delimiters in combo box of the To Hex operation
+
+
 ## [1.3.6] - 2025-08-21
 
 ### Added 

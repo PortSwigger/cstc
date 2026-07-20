@@ -2,7 +2,6 @@ package de.usd.cstchef.view.filter;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
-import burp.Logger;
 import burp.api.montoya.core.ToolType;
 
 public class Filter {

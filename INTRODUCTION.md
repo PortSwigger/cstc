@@ -33,7 +33,7 @@ We will now look at two examples using a demo application. A detailed video demo
 
 <img src="media/introduction/fig04-send_to_incoming.png" width="75%" heigth="75%">
 
-In this first example we see a HTTP request and its response in the Repeater tab. The body of the response is encoded and to create a matching recipe with the CSTC, we send the response to the ```Incoming``` tab.<br>
+In this first example we see an HTTP request and its response in the Repeater tab. The body of the response is encoded and to create a matching recipe with the CSTC, we send the response to the ```Incoming``` tab.<br>
 Note here that the menu for sending the HTTP request to the CSTC can also be called up in the Proxy tab and, above all, in the HTTP history.
 
 <img src="media/introduction/fig05-example_1_response.png" width="75%" height="75%">

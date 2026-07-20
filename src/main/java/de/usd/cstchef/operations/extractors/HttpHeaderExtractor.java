@@ -7,7 +7,7 @@ import de.usd.cstchef.operations.Operation.OperationInfos;
 import de.usd.cstchef.operations.OperationCategory;
 import de.usd.cstchef.view.ui.VariableTextField;
 
-@OperationInfos(name = "Get HTTP Header", category = OperationCategory.EXTRACTORS, description = "Extracts a header of a HTTP message.")
+@OperationInfos(name = "Get HTTP Header", category = OperationCategory.EXTRACTORS, description = "Extracts a header of an HTTP message.")
 public class HttpHeaderExtractor extends Operation {
 
     protected VariableTextField headerNameField;

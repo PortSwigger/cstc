@@ -3,11 +3,14 @@ package de.usd.cstchef.view;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -15,19 +18,20 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -35,9 +39,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
-import javax.swing.KeyStroke;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -53,27 +57,35 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import burp.BurpUtils;
 import burp.CstcMessageEditorController;
 import burp.Logger;
-import burp.MyExtensionProvidedHttpResponseEditorFormatting;
 import burp.api.montoya.core.BurpSuiteEdition;
 import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.persistence.PersistedObject;
+import burp.api.montoya.ui.hotkey.HotKey;
+import burp.api.montoya.ui.hotkey.HotKeyHandler;
 import de.usd.cstchef.Utils.MessageType;
 import de.usd.cstchef.VariableStore;
 import de.usd.cstchef.operations.Operation;
+import de.usd.cstchef.operations.dataformat.JsonBeautifier;
+import de.usd.cstchef.operations.setter.HttpJsonSetter;
 import de.usd.cstchef.view.filter.FilterState.BurpOperation;
 import de.usd.cstchef.view.ui.PlaceholderTextField;
 import de.usd.cstchef.view.ui.TextChangedListener;
 
 public class RecipePanel extends JPanel implements ChangeListener {
 
+    private static final Path FIRST_LAUNCH_MARKER = Paths.get(System.getProperty("user.home"), ".config", ".cstc");
+    private static final boolean SHOULD_INITIALIZE_DEFAULT_EXAMPLES = initializeDefaultExamplesFlag();
+
     private int operationSteps = 10;
     private boolean autoBake = true;
     private int bakeThreshold = 400;
     private String recipeName;
+    private String persistenceId;
     private BurpOperation operation;
+    private MessageType messageType;
 
     private BurpEditorWrapper inputText;
     private BurpEditorWrapper outputText;
@@ -104,10 +116,31 @@ public class RecipePanel extends JPanel implements ChangeListener {
     private JSpinner autoBakeInterval = new JSpinner(new SpinnerNumberModel(1000, 500, 900000, 200));
     private Timer autoBakeTimer;
 
-    public RecipePanel(BurpOperation operation) {
+    private JCheckBox contentLengthCheckbox = new JCheckBox("Update Content-Length");
+
+    private GridBagConstraints recipeStepPanelConstraints;
+
+    private boolean initializingDefaultExample;
+    private boolean suppressStateChanges;
+
+    public RecipePanel(BurpOperation operation, String recipeName) {
+        this(operation, recipeName, UUID.randomUUID().toString());
+    }
+
+    public RecipePanel(BurpOperation operation, String recipeName, String persistenceId) {
 
         this.operation = operation;
-        this.recipeName = operation.toString();
+        this.recipeName = recipeName;
+        this.persistenceId = persistenceId;
+
+        switch(this.operation) {
+            case OUTGOING:
+                this.messageType = MessageType.REQUEST;
+            case INCOMING:
+                this.messageType = MessageType.REQUEST;
+            case FORMAT:
+                this.messageType = MessageType.RAW;
+        }
 
         ToolTipManager tooltipManager = ToolTipManager.sharedInstance();
         tooltipManager.setInitialDelay(0);
@@ -119,9 +152,9 @@ public class RecipePanel extends JPanel implements ChangeListener {
         controllerMod = new CstcMessageEditorController();
 
         // create input panel
-        JPanel inputPanel = new LayoutPanel("Input");
+        JPanel inputPanel = new JPanel(new BorderLayout());
         inputText = new BurpEditorWrapper(controllerOrig, operation, true);
-        inputPanel.add(inputText.uiComponent());
+        inputPanel.add(inputText.uiComponent(), BorderLayout.CENTER);
 
         /* 
          * This is necessary to have the distribution of space in all of the three RecipePanels uniform.
@@ -131,9 +164,9 @@ public class RecipePanel extends JPanel implements ChangeListener {
         inputPanel.setMinimumSize(new Dimension(248, 0));
 
         // create output panel
-        JPanel outputPanel = new LayoutPanel("Output");
+        JPanel outputPanel = new JPanel(new BorderLayout());
         outputText = new BurpEditorWrapper(controllerMod, operation, false);
-        outputPanel.add(outputText.uiComponent());
+        outputPanel.add(outputText.uiComponent(), BorderLayout.CENTER);
 
         outputPanel.setPreferredSize(new Dimension(248, 0));
         outputPanel.setMinimumSize(new Dimension(248, 0));
@@ -178,32 +211,28 @@ public class RecipePanel extends JPanel implements ChangeListener {
         searchTreePanel.add(btnContainer, BorderLayout.PAGE_END);
 
         // create operations panel
-        JPanel operationsPanel = new LayoutPanel("Operations");
-        operationsPanel.add(searchTreePanel);
+        JPanel operationsPanel = new JPanel(new BorderLayout());
+        operationsPanel.add(searchTreePanel, BorderLayout.CENTER);
         operationsPanel.setBackground(Color.WHITE);
-
-        operationsPanel.setPreferredSize(new Dimension(100, 0));
-        operationsPanel.setMinimumSize(new Dimension(100, 0));
 
         inOut.setTopComponent(inputPanel);
         inOut.setBottomComponent(outputPanel);
         inOut.setResizeWeight(0.5);
 
         // create active operations (middle) panel
-        LayoutPanel activeOperationsPanel = new LayoutPanel("Recipe");
+        JPanel activeOperationsPanel = new JPanel(new BorderLayout());
+        JPanel controlsPanel = new JPanel(new WrapLayout(FlowLayout.LEFT, 5, 5));
 
         inactiveWarning = new JLabel(this.operation.toString() + " Operations currently inactive!");
         inactiveWarning.setForeground(Color.RED);
         inactiveWarning.setFont(inactiveWarning.getFont().deriveFont(inactiveWarning.getFont().getStyle() | Font.BOLD));
         if(!this.operation.equals(BurpOperation.FORMAT))
-            activeOperationsPanel.addActionComponent(inactiveWarning);
+            controlsPanel.add(inactiveWarning);
 
         // add action items
         if(this.operation != BurpOperation.FORMAT)
-            activeOperationsPanel.addActionComponent(filters);
+            controlsPanel.add(filters);
         
-        activeOperationsPanel.setPreferredSize(new Dimension(393, 0));
-        activeOperationsPanel.setMinimumSize(new Dimension(393, 0));
         
         filters.addActionListener(new ActionListener() {
             @Override
@@ -215,29 +244,18 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 
                 if (!BurpUtils.getInstance().getApi().burpSuite().version().edition()
                         .equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
-                    saveFilterState();
+                    BurpUtils.getInstance().getView().saveFilterState();
                 }
             }
         });
 
-        KeyStroke keyStroke = KeyStroke.getKeyStroke("ctrl shift F");
-        this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(keyStroke, "clickFilter");
-
-        this.getActionMap().put("clickFilter", new AbstractAction() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(operation != BurpOperation.FORMAT) {
-                    filters.doClick();
-                }
-            }
-            
-        });
-
-        filters.setToolTipText("Hotkey: CTRL + SHIFT + F");
+        HotKey hotKey = HotKey.hotKey("Open Filter Dialog", "Ctrl+Shift+F");
+        HotKeyHandler handler = event -> filters.doClick();
+        BurpUtils.getInstance().getApi().userInterface().registerHotKeyHandler(hotKey, handler);
+        filters.setToolTipText("Hotkey from within a message editor: Ctrl + Shift + F");
 
         bakeButton.setEnabled(!autoBake);
-        activeOperationsPanel.addActionComponent(bakeButton);
+        controlsPanel.add(bakeButton);
         bakeButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent arg0) {
@@ -246,7 +264,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         });
 
         JButton saveButton = new JButton("Save to File");
-        activeOperationsPanel.addActionComponent(saveButton);
+        controlsPanel.add(saveButton);
         saveButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent arg0) {
@@ -269,7 +287,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         });
 
         JButton loadButton = new JButton("Load");
-        activeOperationsPanel.addActionComponent(loadButton);
+        controlsPanel.add(loadButton);
         loadButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent arg0) {
@@ -293,7 +311,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         autoBakeInterval.setPreferredSize(new Dimension(100, 22));
         autoBakeInterval.setMaximumSize(new Dimension(100, 22));
         autoBakeInterval.setToolTipText("Auto bake interval in milliseconds.\nMin: 500ms Max: 900,000ms (= 15min)");
-        activeOperationsPanel.addActionComponent(autoBakeInterval);
+        controlsPanel.add(autoBakeInterval);
         autoBakeInterval.addChangeListener(new ChangeListener() {
 
             @Override
@@ -304,7 +322,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         });
 
         bakeCheckBox.setSelected(this.autoBake);
-        activeOperationsPanel.addActionComponent(bakeCheckBox);
+        controlsPanel.add(bakeCheckBox);
         bakeCheckBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -314,8 +332,11 @@ public class RecipePanel extends JPanel implements ChangeListener {
             }
         });
 
+        contentLengthCheckbox.setSelected(true);
+        controlsPanel.add(contentLengthCheckbox);
+
         JButton variablesButton = new JButton("Variables");
-        activeOperationsPanel.addActionComponent(variablesButton);
+        controlsPanel.add(variablesButton);
         variablesButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent arg0) {
@@ -326,7 +347,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
         });
 
         JButton clearButton = new JButton("Clear");
-        activeOperationsPanel.addActionComponent(clearButton);
+        controlsPanel.add(clearButton);
         clearButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent arg0) {
@@ -345,16 +366,21 @@ public class RecipePanel extends JPanel implements ChangeListener {
         JPanel dummyPanel = new JPanel();
         dummyPanel.setBackground(Color.YELLOW);
 
-        GridBagConstraints co = new GridBagConstraints();
-        co.gridheight = GridBagConstraints.REMAINDER;
-        co.weighty = 1;
-        co.fill = GridBagConstraints.VERTICAL;
+        recipeStepPanelConstraints = new GridBagConstraints();
+        recipeStepPanelConstraints.gridheight = GridBagConstraints.REMAINDER;
+        recipeStepPanelConstraints.weighty = 1;
+        recipeStepPanelConstraints.fill = GridBagConstraints.VERTICAL;
 
         operationLines.add(dummyPanel, gbc); // this is the magic!11!!
 
         JScrollPane activeOperationsScrollPane = new JScrollPane(operationLines, JScrollPane.VERTICAL_SCROLLBAR_NEVER,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        activeOperationsPanel.add(activeOperationsScrollPane);
+
+
+        controlsPanel.setMinimumSize(new Dimension(100, 0));
+
+        activeOperationsPanel.add(controlsPanel, BorderLayout.NORTH);
+        activeOperationsPanel.add(activeOperationsScrollPane, BorderLayout.CENTER);
 
         // button to add lanes
         addLaneButton.setIcon(plusIcon);
@@ -370,7 +396,7 @@ public class RecipePanel extends JPanel implements ChangeListener {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if(operationSteps < 100) {
-                    increaseLaneNumber(1);
+                    insertLaneAt(operationSteps);
                 }
 
                 // scroll max to the right if a lane is added. invokeLater because the maximum needs to be updated in the event queue first
@@ -387,15 +413,15 @@ public class RecipePanel extends JPanel implements ChangeListener {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if(operationSteps > 1) {
-                    decreaseLaneNumber(1);
+                    deleteLaneAt(operationSteps - 1);
                 }
             }
             
         });
 
         for (int i = operationSteps; i > 0; i--) {
-            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(i), this, this.operation);
-            operationLines.add(opPanel, co, 0);
+            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(i), this, this);
+            operationLines.add(opPanel, recipeStepPanelConstraints, 0);
 
             JPanel panel = opPanel.getOperationsPanel();
             MoveOperationMouseAdapter moma = new MoveOperationMouseAdapter(opPanel, operationLines);
@@ -422,72 +448,218 @@ public class RecipePanel extends JPanel implements ChangeListener {
         operationsTree.addMouseMotionListener(dma);
 
         startAutoBakeTimer(1000);
+        initializeDefaultExample();
+    }
+
+    private void initializeDefaultExample() {
+        if (!isDefaultRecipePanel() || !SHOULD_INITIALIZE_DEFAULT_EXAMPLES) {
+            return;
+        }
+
+        try {
+            this.initializingDefaultExample = true;
+            clear();
+
+            switch (this.operation) {
+                case OUTGOING:
+                    populateOutgoingExample();
+                    break;
+                case INCOMING:
+                    populateIncomingExample();
+                    break;
+                case FORMAT:
+                    populateFormattingExample();
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            Logger.getInstance().err("Could not initialize example content for '" + this.recipeName + "': " + e.getMessage());
+        } finally {
+            this.initializingDefaultExample = false;
+        }
+
+        bake(false);
+    }
+
+    private static boolean initializeDefaultExamplesFlag() {
+        try {
+            if (Files.exists(FIRST_LAUNCH_MARKER)) {
+                return false;
+            }
+
+            Path parentDirectory = FIRST_LAUNCH_MARKER.getParent();
+            if (parentDirectory != null) {
+                Files.createDirectories(parentDirectory);
+            }
+
+            Files.createFile(FIRST_LAUNCH_MARKER);
+            return true;
+        } catch (IOException e) {
+            Logger.getInstance().err("Could not create first-launch marker at '" + FIRST_LAUNCH_MARKER + "': " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean isDefaultRecipePanel() {
+        return (this.operation == BurpOperation.OUTGOING && "Outgoing Requests".equals(this.recipeName))
+                || (this.operation == BurpOperation.INCOMING && "Incoming Responses".equals(this.recipeName))
+                || (this.operation == BurpOperation.FORMAT && "Formatting".equals(this.recipeName));
+    }
+
+    private void populateOutgoingExample() {
+        inputText.setRequest(HttpRequest.httpRequest(ByteArray.byteArray(getOutgoingExampleRequest())));
+
+        RecipeStepPanel lane = (RecipeStepPanel) this.operationLines.getComponent(0);
+        configureJsonSetterLane(lane,
+                "Promote request role",
+                "Example: change a JSON field in an outgoing request before it is sent.",
+                "role",
+                "admin",
+                "Sets the JSON parameter 'role' from 'user' to 'admin'.");
+    }
+
+    private void populateIncomingExample() {
+        inputText.setResponse(HttpResponse.httpResponse(ByteArray.byteArray(getIncomingExampleResponse())));
+
+        RecipeStepPanel lane = (RecipeStepPanel) this.operationLines.getComponent(0);
+        configureJsonSetterLane(lane,
+                "Patch response JSON",
+                "Example: modify a JSON value in an incoming response before forwarding it.",
+                "role",
+                "admin",
+                "Changes the JSON parameter 'role' from 'user' to 'admin'.");
+    }
+
+    private void populateFormattingExample() {
+        inputText.setContents(ByteArray.byteArray(getFormattingExampleInput()));
+
+        RecipeStepPanel lane = (RecipeStepPanel) this.operationLines.getComponent(0);
+        lane.setTitle("Beautify JSON");
+        lane.setComment("Example: turn compact JSON into a readable, indented structure.");
+
+        JsonBeautifier operation = new JsonBeautifier();
+        operation.setComment("Formats the sample JSON payload for easier review.");
+        lane.addComponent(operation, 0);
+    }
+
+    private void configureJsonSetterLane(RecipeStepPanel lane, String laneTitle, String laneComment, String key,
+            String value, String operationComment) {
+        lane.setTitle(laneTitle);
+        lane.setComment(laneComment);
+
+        HttpJsonSetter operation = new HttpJsonSetter();
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("Key", key);
+        parameters.put("Value", value);
+        parameters.put("checkbox1", true);
+        parameters.put("textbox1", "");
+        operation.load(parameters);
+        operation.setComment(operationComment);
+        lane.addComponent(operation, 0);
+    }
+
+    private String getOutgoingExampleRequest() {
+        return String.join("\r\n",
+                "POST /api/session HTTP/1.1",
+                "Host: demo.cstc.local",
+                "Content-Type: application/json",
+                "",
+                "{\"username\":\"alice\",\"role\":\"user\"}");
+    }
+
+    private String getIncomingExampleResponse() {
+        return String.join("\r\n",
+                "HTTP/1.1 200 OK",
+                "Content-Type: application/json",
+                "",
+                "{\"status\":\"ok\",\"role\":\"user\",\"featureFlags\":{\"beta\":false}}");
+    }
+
+    private String getFormattingExampleInput() {
+        return "{\"event\":\"login\",\"details\":{\"user\":\"alice\",\"roles\":[\"user\"],\"success\":true}}";
+    }
+
+    public BurpOperation getOperation() {
+        return this.operation;
+    }
+
+    public String getPersistenceId() {
+        return this.persistenceId;
+    }
+
+    public String getPersistedInputKey() {
+        return this.persistenceId + "-Input";
+    }
+
+    public String getPersistedRecipeKey() {
+        return this.persistenceId + "-Recipe";
+    }
+
+    public String getRecipeName() {
+        return this.recipeName;
+    }
+
+    public void setRecipeName(String name) {
+        BurpUtils.getInstance().getFilterState().renameRecipePanel(this.recipeName, name, this.operation);
+        this.recipeName = name;
+        RequestFilterDialog.getInstance().updateFilterSettings();
+        BurpUtils.getInstance().getView().updateInactiveWarnings();
     }
 
     public void disableAutobakeIfFilterActive() {
-        for(Boolean b : BurpUtils.getInstance().getFilterState().getIncomingFilterSettings().values()) {
-            if(b) {
-                this.autoBake = false;
-                this.bakeCheckBox.setSelected(false);
-                this.bakeButton.setEnabled(true);
-                this.bakeCheckBox.setEnabled(false);
-                this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
-                this.autoBakeInterval.setEnabled(false);
-                return;
-            }
-            else if(!this.bakeCheckBox.isEnabled() && !b) {
-                this.bakeCheckBox.setEnabled(true);
-                this.bakeCheckBox.setToolTipText("");
-                this.autoBakeInterval.setEnabled(true);
-            }
+        if(BurpUtils.getInstance().getFilterState().hasActiveFilters(BurpOperation.OUTGOING) || BurpUtils.getInstance().getFilterState().hasActiveFilters(BurpOperation.INCOMING)) {
+            disableAutobake();
+            
+            return;
         }
 
-        for(Boolean b : BurpUtils.getInstance().getFilterState().getOutgoingFilterSettings().values()) {
-            if(b) {
-                this.autoBake = false;
-                this.bakeCheckBox.setSelected(false);
-                this.bakeButton.setEnabled(true);
-                this.bakeCheckBox.setEnabled(false);
-                this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
-                this.autoBakeInterval.setEnabled(false);
-                return;
-            }
-            else if(!this.bakeCheckBox.isEnabled() && !b) {
-                this.bakeCheckBox.setEnabled(true);
-                this.bakeCheckBox.setToolTipText("");
-                this.autoBakeInterval.setEnabled(true);
-            }
-        }
-    }   
-
-    private void increaseLaneNumber(int number) {
-        this.operationSteps += number;
-
-        GridBagConstraints co = new GridBagConstraints();
-        co.gridheight = GridBagConstraints.REMAINDER;
-        co.weighty = 1;
-        co.fill = GridBagConstraints.VERTICAL;
-
-        for(int i = 0; i < number; i++) {
-            RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(operationSteps - (number - i) + 1), this, this.operation);
-            operationLines.add(opPanel, co, operationSteps - (number - i));
-            operationLines.revalidate();
-            operationLines.repaint();
-
-            JPanel panel = opPanel.getOperationsPanel();
-            MoveOperationMouseAdapter moma = new MoveOperationMouseAdapter(opPanel, operationLines);
-            panel.addMouseListener(moma);
-            panel.addMouseMotionListener(moma);
-        }
+        enableAutobake();
     }
 
-    private void decreaseLaneNumber(int number) {
-        int index = this.operationSteps;
-        this.operationSteps -= number;
-        for(int i = 0; i < number; i++) {
-            operationLines.remove(index - 1 - i);
-            operationLines.revalidate();
-            operationLines.repaint();
+    public void disableAutobake() {
+        this.autoBake = false;
+        this.bakeCheckBox.setSelected(false);
+        this.bakeButton.setEnabled(true);
+        this.bakeCheckBox.setEnabled(false);
+        this.bakeCheckBox.setToolTipText("Auto bake is disabled if Filter is active.");
+        this.autoBakeInterval.setEnabled(false);
+    }
+
+    public void enableAutobake() {
+        this.bakeCheckBox.setEnabled(true);
+        this.bakeCheckBox.setToolTipText("");
+        this.autoBakeInterval.setEnabled(true);
+    }
+
+    public void insertLaneAt(int index) {
+        this.operationSteps++;
+
+        if(index == -1) {
+            index = 0;
+        }
+
+        RecipeStepPanel opPanel = new RecipeStepPanel("Lane " + String.valueOf(operationSteps), this, this);
+        operationLines.add(opPanel, recipeStepPanelConstraints, index);
+        if (!this.suppressStateChanges) {
+            refreshOperationLines();
+        }
+
+        JPanel panel = opPanel.getOperationsPanel();
+        MoveOperationMouseAdapter moma = new MoveOperationMouseAdapter(opPanel, operationLines);
+        panel.addMouseListener(moma);
+        panel.addMouseMotionListener(moma);
+
+
+    }
+
+    public void deleteLaneAt(int index) {
+        if(operationSteps > 1) {
+            this.operationSteps--;
+            operationLines.remove(index);
+            if (!this.suppressStateChanges) {
+                refreshOperationLines();
+            }
         }
     }
 
@@ -545,81 +717,92 @@ public class RecipePanel extends JPanel implements ChangeListener {
     }
 
     public void restoreState(String jsonState) throws IOException, ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
-        this.clear();
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode = mapper.readTree(jsonState);
-        JsonNode stepNodes;
-        JsonNode versionNode;
+        boolean previousSuppressStateChanges = this.suppressStateChanges;
+        this.suppressStateChanges = true;
+        try {
+            this.clear();
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(jsonState);
+            JsonNode stepNodes;
+            JsonNode versionNode;
 
-        // check if "version" ObjectNode is there (since 1.3.2)
-        if(rootNode.get(0) != null && rootNode.get(0).get("version") == null) {
-            // recipes saved by CSTC <= 1.3.1
-            stepNodes = rootNode;
-        }
-        else {
-            // currently 1.3.2
-            versionNode = rootNode.get(0);
-            stepNodes = rootNode.get(1);
-        }
+            // check if "version" ObjectNode is there (since 1.3.2)
+            if(rootNode.get(0) != null && rootNode.get(0).get("version") == null) {
+                // recipes saved by CSTC <= 1.3.1
+                stepNodes = rootNode;
+            }
+            else {
+                // currently 1.3.2
+                versionNode = rootNode.get(0);
+                stepNodes = rootNode.get(1);
+            }
 
-        if (!stepNodes.isArray()) {
-            throw new IOException("wrong data format");
-        }
-
-        if(stepNodes.size() > operationSteps) {
-            increaseLaneNumber(stepNodes.size() - operationSteps);
-        }
-
-        for (int step = 0; step < stepNodes.size(); step++) {
-            JsonNode operationNodes = stepNodes.get(step);
-            if (!operationNodes.isArray()) {
+            if (!stepNodes.isArray()) {
                 throw new IOException("wrong data format");
             }
 
-            RecipeStepPanel panel = (RecipeStepPanel) this.operationLines.getComponent(step);
-
-            /*  two types of ObjectNodes for every RecipeStepPanel:
-                Lane information (always at index 0, if set) and the Operations
-
-                If there's a lane ObjectNode we need to tell the inner loop to begin at index 1.
-                The inner loop iterates over the Operations
-            */
-            int index = 0;
-            if(operationNodes.get(0) != null) {
-                if(operationNodes.get(0).get("lane_title") != null) {
-                    index = 1;
-                    panel.setTitle(operationNodes.get(0).get("lane_title").asText());
-                }
-                if(operationNodes.get(0).get("lane_comment") != null) {
-                    index = 1;
-                    panel.setComment(operationNodes.get(0).get("lane_comment").asText());
+            if(stepNodes.size() > operationSteps) {
+                for(int i = 0; i <= (stepNodes.size() - operationSteps); i++) {
+                    insertLaneAt(operationSteps);
                 }
             }
 
-            for (int i = index; i < operationNodes.size(); i++) {
-                JsonNode operationNode = operationNodes.get(i);
-                String operation = operationNode.get("operation").asText();
-                Map<String, Object> parameters =  mapper.convertValue(operationNode.get("parameters"), Map.class);
-                Class<Operation> cls = (Class<Operation>) Class.forName(operation);
-
-                // check if it is an operation
-                Operation op = cls.getDeclaredConstructor().newInstance();
-                op.load(parameters);
-
-                if(operationNode.get("is_enabled") != null) {
-                    op.setDisabled(!operationNode.get("is_enabled").asBoolean());
+            for (int step = 0; step < stepNodes.size(); step++) {
+                JsonNode operationNodes = stepNodes.get(step);
+                if (!operationNodes.isArray()) {
+                    throw new IOException("wrong data format");
                 }
 
-                // check if "comment" attribute is set (since 1.3.2)
-                if(operationNode.get("comment") != null) {
-                    if(operationNode.get("comment").asText() != "null") {
-                        op.setComment(operationNode.get("comment").asText());
+                RecipeStepPanel panel = (RecipeStepPanel) this.operationLines.getComponent(step);
+
+                /*  two types of ObjectNodes for every RecipeStepPanel:
+                    Lane information (always at index 0, if set) and the Operations
+
+                    If there's a lane ObjectNode we need to tell the inner loop to begin at index 1.
+                    The inner loop iterates over the Operations
+                */
+                int index = 0;
+                if(operationNodes.get(0) != null) {
+                    if(operationNodes.get(0).get("lane_title") != null) {
+                        index = 1;
+                        panel.setTitle(operationNodes.get(0).get("lane_title").asText());
+                    }
+                    if(operationNodes.get(0).get("lane_comment") != null) {
+                        index = 1;
+                        panel.setComment(operationNodes.get(0).get("lane_comment").asText());
                     }
                 }
-                // depending on if lane name is set we may start the loop at index 1, but want to add the first component at index 0
-                panel.addComponent(op, index == 1 ? i-1 : i);
+
+                for (int i = index; i < operationNodes.size(); i++) {
+                    JsonNode operationNode = operationNodes.get(i);
+                    String operation = operationNode.get("operation").asText();
+                    Map<String, Object> parameters =  mapper.convertValue(operationNode.get("parameters"), Map.class);
+                    Class<Operation> cls = (Class<Operation>) Class.forName(operation);
+
+                    // check if it is an operation
+                    Operation op = cls.getDeclaredConstructor().newInstance();
+                    op.load(parameters);
+
+                    if(operationNode.get("is_enabled") != null) {
+                        op.setDisabled(!operationNode.get("is_enabled").asBoolean());
+                    }
+
+                    // check if "comment" attribute is set (since 1.3.2)
+                    if(operationNode.get("comment") != null) {
+                        if(operationNode.get("comment").asText() != "null") {
+                            op.setComment(operationNode.get("comment").asText());
+                        }
+                    }
+                    // depending on if lane name is set we may start the loop at index 1, but want to add the first component at index 0
+                    panel.addComponent(op, index == 1 ? i-1 : i);
+                }
             }
+        } finally {
+            this.suppressStateChanges = previousSuppressStateChanges;
         }
+
+        refreshOperationLines();
+        stateChanged(new ChangeEvent(this));
     }
 
     private String getStateAsJSON() throws IOException {
@@ -689,6 +872,16 @@ public class RecipePanel extends JPanel implements ChangeListener {
     }
 
     private ByteArray doBake(ByteArray input, ByteArray requestToResponse) {
+
+        // save content length in case it is set. null because headerValue returns null if header is not found
+        String contentLength = "null";
+        
+        if(isHttpRequest(input)) {
+            contentLength = HttpRequest.httpRequest(input).headerValue("Content-Length");
+        }
+        else if(isHttpResponse(input)) {
+            contentLength = HttpResponse.httpResponse(input).headerValue("Content-Length");
+        }
         
         ByteArray result = input.copy();
         ByteArray intermediateResult = input;
@@ -732,47 +925,57 @@ public class RecipePanel extends JPanel implements ChangeListener {
                 result = intermediateResult;
                 store.setVariable(stepVariableName, intermediateResult);
             }
+
+            // if isSelected update the content length
+            if(contentLengthCheckbox.isSelected()) {
+                if(isHttpRequest(input)) {
+                    result = HttpRequest.httpRequest(result).withBody(HttpRequest.httpRequest(result).body()).toByteArray();
+                }
+                else if(isHttpResponse(input)) {
+                    result = HttpResponse.httpResponse(result).withBody(HttpResponse.httpResponse(result).body()).toByteArray();
+                }
+            }
+            // if not set the previous value again in case it was changed during baking
+            else {
+                if(!contentLength.equals("null")) {
+                    result = HttpRequest.httpRequest(result).withHeader("Content-Length", contentLength).toByteArray();
+                }
+            }
         }
 
         return result;
     }
 
     private void bake(boolean spamProtection) {
-        if (this.bakeTimer != null) {
-            this.bakeTimer.cancel();
-        }
-        this.bakeTimer = new Timer(this.recipeName);
-        TimerTask tt = new TimerTask() {
-            @Override
-            public void run() {
-                ByteArray result = doBake(inputText.getRequest() == null ? inputText.getContents() /* inputText.getResponse().toByteArray() */ : inputText.getRequest().toByteArray(), inputText.getRequestToResponse());
-                HashMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        if( operation == BurpOperation.OUTGOING) {
-                            outputText.setRequest(HttpRequest.httpRequest(result));
-                            controllerMod.setRequest(HttpRequest.httpRequest(result));
-                        } else if (operation == BurpOperation.INCOMING){
-                            outputText.setResponse(HttpResponse.httpResponse(result));
-                            controllerMod.setResponse(HttpResponse.httpResponse(result));
-                        }
-                        else{
-                            outputText.setContents(result);
-                            // TODO: MessageEditorController?
-
-                        }
-                        VariablesWindow vw = VariablesWindow.getInstance();
-                        if (vw.isVisible()) {
-                            vw.refresh(variables);
-                        }
-                        PopupVariableMenu.refresh(variables);
-                    }
-                });
-            }
-        };
         int threshold = spamProtection ? this.bakeThreshold : 0;
-        this.bakeTimer.schedule(tt, threshold);
+        if (this.bakeTimer != null) {
+            this.bakeTimer.stop();
+        }
+
+        this.bakeTimer = new Timer(threshold, event -> {
+            ByteArray result = doBake(inputText.getRequest() == null ? inputText.getContents() : inputText.getRequest().toByteArray(), inputText.getRequestToResponse());
+            TreeMap<String, ByteArray> variables = VariableStore.getInstance().getVariables();
+
+            if( operation == BurpOperation.OUTGOING) {
+                outputText.setRequest(HttpRequest.httpRequest(result));
+                controllerMod.setRequest(HttpRequest.httpRequest(result));
+            } else if (operation == BurpOperation.INCOMING){
+                outputText.setResponse(HttpResponse.httpResponse(result));
+                controllerMod.setResponse(HttpResponse.httpResponse(result));
+            }
+            else{
+                outputText.setContents(result);
+                // TODO: MessageEditorController?
+
+            }
+            VariablesWindow vw = VariablesWindow.getInstance();
+            if (vw.isVisible()) {
+                vw.refresh(variables);
+            }
+            PopupVariableMenu.refresh(variables);
+        });
+        this.bakeTimer.setRepeats(false);
+        this.bakeTimer.start();
     }
 
     public ByteArray bake(ByteArray input, ByteArray /* make request available if a response is to bake (to use in RequesToResponse) */ requestToResponse) {
@@ -787,17 +990,16 @@ public class RecipePanel extends JPanel implements ChangeListener {
 
     private void startAutoBakeTimer(int milliseconds) {
         if(autoBakeTimer != null) {
-            autoBakeTimer.cancel();
+            autoBakeTimer.stop();
         }
-        TimerTask repeatedTask = new TimerTask() {
-            public void run() {
-                if (inputText.isModified()) {
-                    autoBake();
-                }
+
+        autoBakeTimer = new Timer(milliseconds, event -> {
+            if (inputText.isModified()) {
+                autoBake();
             }
-        };
-        autoBakeTimer = new Timer("Auto Bake Timer");
-        autoBakeTimer.scheduleAtFixedRate(repeatedTask, milliseconds, milliseconds);
+        });
+        autoBakeTimer.setInitialDelay(milliseconds);
+        autoBakeTimer.start();
     }
 
     public void autoBake() {
@@ -816,44 +1018,55 @@ public class RecipePanel extends JPanel implements ChangeListener {
     private void saveRecipe() {
         PersistedObject savedState = BurpUtils.getInstance().getApi().persistence().extensionData();
         try {
-            savedState.setString(this.operation + "Recipe", getStateAsJSON());
+            savedState.setString(getPersistedRecipeKey(), getStateAsJSON());
         } catch (IOException e) {
             Logger.getInstance().err(
                     "Could not save recipes to the Burp project. If you are running Burp Suite Community Edition, this behavior is expected since saving project files is exclusive to BurpSuite Pro users.");
         }
     }
 
-    private void saveFilterState() {
-        PersistedObject savedState = BurpUtils.getInstance().getApi().persistence().extensionData();
-        try {
-            savedState.setString("FilterState",
-                    new ObjectMapper().writeValueAsString(BurpUtils.getInstance().getFilterState()));
-        } catch (Exception e) {
-            Logger.getInstance().err(
-                    "Could not save the filter state to the Burp project. If you are running Burp Suite Community Edition, this behavior is expected since saving project files is exclusive to BurpSuite Pro users.\n"
-                            + e.getMessage());
-        }
-    }
-
     private void clear() {
-        if(this.operationSteps < 10) {
-            increaseLaneNumber(10 - this.operationSteps);
+        boolean previousSuppressStateChanges = this.suppressStateChanges;
+        this.suppressStateChanges = true;
+
+        try {
+
+            int currentOperationSteps = this.operationSteps;
+
+            if(currentOperationSteps < 10) {
+                for(int i = 0; i <= (10 - currentOperationSteps) - 1; i++) {
+                    insertLaneAt(currentOperationSteps);
+                }
+            }
+            else if(currentOperationSteps > 10) {
+                for(int i = currentOperationSteps - 10 - 1; i >= 0; i--) {
+                    deleteLaneAt(i);
+                }
+            }
+            
+            for (int step = 0; step < this.operationSteps; step++) {
+                RecipeStepPanel stepPanel = (RecipeStepPanel) this.operationLines.getComponent(step);
+                int laneIndex = step + 1;
+                stepPanel.setTitle("Lane " + laneIndex);
+                stepPanel.clearComment();
+                stepPanel.clearOperations();
+            }
+        } finally {
+            this.suppressStateChanges = previousSuppressStateChanges;
         }
-        else if(this.operationSteps > 10) {
-            decreaseLaneNumber(this.operationSteps - 10);
-        }
-        
-        for (int step = 0; step < this.operationSteps; step++) {
-            RecipeStepPanel stepPanel = (RecipeStepPanel) this.operationLines.getComponent(step);
-            int laneIndex = step + 1;
-            stepPanel.setTitle("Lane " + laneIndex);
-            stepPanel.clearComment();
-            stepPanel.clearOperations();
+
+        refreshOperationLines();
+        if (!this.suppressStateChanges) {
+            stateChanged(new ChangeEvent(this));
         }
     }
 
     @Override
     public void stateChanged(ChangeEvent e) {
+        if (this.initializingDefaultExample || this.suppressStateChanges) {
+            return;
+        }
+
         this.autoBake();
 
         if (!BurpUtils.getInstance().getApi().burpSuite().version().edition().equals(BurpSuiteEdition.COMMUNITY_EDITION)) {
@@ -861,4 +1074,129 @@ public class RecipePanel extends JPanel implements ChangeListener {
         }
     }
 
+    private boolean isHttpRequest(ByteArray input) {
+        String httpRequestRegex = "(GET|POST|HEAD|PUT|DELETE|CONNECT|OPTIONS|TRACE|PATCH)\\s/\\S*\\sHTTP/\\d(\\.\\d)?";
+
+        final Pattern requestPattern = Pattern.compile(httpRequestRegex);
+        final Matcher requestMatcher = requestPattern.matcher(input.toString().split("\n")[0].trim());
+        if (requestMatcher.matches()) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    private boolean isHttpResponse(ByteArray input) {
+        String httpResponseRegex = "HTTP/\\d(\\.\\d)?\\s\\d{3}\\s(\\w*\\s?)*";
+
+        final Pattern responsePattern = Pattern.compile(httpResponseRegex);
+        final Matcher responseMatcher = responsePattern.matcher(input.toString().split("\n")[0].trim());
+        if (responseMatcher.matches()) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    public int getIndexOf(RecipeStepPanel recipeStepPanel) {
+        Component[] recipeStepPanels = operationLines.getComponents();
+
+        for(int i = 0; i < recipeStepPanels.length; i++) {
+            if(recipeStepPanels[i] == recipeStepPanel) {
+                return i;
+            }
+        }
+
+        return -2;
+    }
+
+    private void refreshOperationLines() {
+        this.operationLines.revalidate();
+        this.operationLines.repaint();
+    }
+
+}
+
+
+/**
+ * WrapLayout — a FlowLayout that supports wrapping and correctly reports preferred/minimum sizes
+ * (based on Rob Camick's WrapLayout)
+ */
+class WrapLayout extends FlowLayout {
+    public WrapLayout() {
+        super();
+    }
+    public WrapLayout(int align) {
+        super(align);
+    }
+    public WrapLayout(int align, int hgap, int vgap) {
+        super(align, hgap, vgap);
+    }
+
+    @Override
+    public Dimension preferredLayoutSize(Container target) {
+        return layoutSize(target, false);
+    }
+
+    @Override
+    public Dimension minimumLayoutSize(Container target) {
+        return layoutSize(target, true);
+    }
+
+    private Dimension layoutSize(Container target, boolean minimum) {
+        synchronized (target.getTreeLock()) {
+            int targetWidth = target.getSize().width;
+            if (targetWidth <= 0) {
+                // use a very large width so components are put in a single row
+                targetWidth = Integer.MAX_VALUE;
+            }
+            Insets insets = target.getInsets();
+            int hgap = getHgap();
+            int vgap = getVgap();
+            int maxWidth = targetWidth - (insets.left + insets.right + hgap * 2);
+
+            Dimension dim = new Dimension(0, 0);
+            int rowWidth = 0;
+            int rowHeight = 0;
+
+            int nmembers = target.getComponentCount();
+            for (int i = 0; i < nmembers; i++) {
+                Component m = target.getComponent(i);
+                if (!m.isVisible()) {
+                    continue;
+                }
+                Dimension d = minimum ? m.getMinimumSize() : m.getPreferredSize();
+                if (rowWidth + d.width > maxWidth) {
+                    // new row
+                    addRow(dim, rowWidth, rowHeight, vgap);
+                    rowWidth = 0;
+                    rowHeight = 0;
+                }
+                if (rowWidth != 0) {
+                    rowWidth += hgap;
+                }
+                rowWidth += d.width;
+                rowHeight = Math.max(rowHeight, d.height);
+            }
+            // last row
+            addRow(dim, rowWidth, rowHeight, vgap);
+
+            dim.width += insets.left + insets.right + hgap * 2;
+            dim.height += insets.top + insets.bottom + vgap * 2;
+
+            return dim;
+        }
+    }
+
+    private void addRow(Dimension dim, int rowWidth, int rowHeight, int vgap) {
+        if (rowWidth > 0) {
+            dim.width = Math.max(dim.width, rowWidth);
+            if (dim.height > 0) {
+                dim.height += vgap;
+            }
+            dim.height += rowHeight;
+        }
+    }
 }

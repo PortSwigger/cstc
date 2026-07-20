@@ -40,7 +40,7 @@ public class MyExtensionProvidedHttpRequestEditorFormatting implements Extension
     public void setRequestResponse(HttpRequestResponse requestResponse)
     {
         this.requestResponse = requestResponse;
-        ByteArray result = view.getFormatRecipePanel().bake(requestResponse.request().toByteArray(), requestResponse.request().toByteArray());
+        ByteArray result = view.getRecipePanelAtIndex(2).bake(requestResponse.request().toByteArray(), requestResponse.request().toByteArray());
         this.requestEditor.setContents(result);
     }
 

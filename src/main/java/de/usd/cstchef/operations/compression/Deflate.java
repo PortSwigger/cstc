@@ -1,10 +1,8 @@
 package de.usd.cstchef.operations.compression;
 
-import java.util.zip.Deflater;
-
+import burp.BurpUtils;
 import burp.api.montoya.core.ByteArray;
-
-import java.io.ByteArrayOutputStream;
+import burp.api.montoya.utilities.CompressionType;
 
 import de.usd.cstchef.operations.Operation;
 import de.usd.cstchef.operations.OperationCategory;
@@ -16,19 +14,10 @@ public class Deflate extends Operation {
 
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
-        Deflater deflater = new Deflater();
-        deflater.setInput(input.getBytes());
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream(input.length());
-        deflater.finish();
+        ByteArray compressedData = BurpUtils.getInstance().getApi().utilities().compressionUtils().compress(input, CompressionType.DEFLATE);
 
-        byte[] buffer = new byte[1024];
-        while( !deflater.finished() ) {
-            int count = deflater.deflate(buffer);
-            outputStream.write(buffer, 0, count);
-        }
+        return compressedData;
 
-        outputStream.close();
-        return factory.createByteArray(outputStream.toByteArray());
     }
 }

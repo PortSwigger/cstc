@@ -4,6 +4,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 
@@ -19,11 +22,21 @@ public class ReadFile extends Operation implements ActionListener {
     private final JFileChooser fileChooser = new JFileChooser();
     private VariableTextField fileNameTxt;
 
+    private VariableTextField basePathField;
+
     @Override
     protected ByteArray perform(ByteArray input) throws Exception {
-        String path = fileNameTxt.getText();
 
-        File file = new File(path);
+        // canonicalize base directory (follows symlinks)
+        Path basePath = Paths.get(basePathField.getText()).toRealPath();
+
+        Path requestedPath = basePath.resolve(fileNameTxt.getText()).normalize().toRealPath();
+
+        if(!requestedPath.startsWith(basePath)) {
+            throw new IllegalArgumentException("The requested file is located outside the base directory.");
+        }
+
+        File file = new File(requestedPath.toString());
         FileInputStream fis = new FileInputStream(file);
         byte[] data = new byte[(int) file.length()];
         fis.read(data);
@@ -33,6 +46,9 @@ public class ReadFile extends Operation implements ActionListener {
     }
 
     public void createUI() {
+        this.basePathField = new VariableTextField();
+        this.addUIElement("Base path", this.basePathField);
+
         this.fileNameTxt = new VariableTextField();
         this.addUIElement("Filename", this.fileNameTxt);
 

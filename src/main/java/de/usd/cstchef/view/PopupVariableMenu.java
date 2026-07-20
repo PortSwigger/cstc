@@ -2,7 +2,6 @@ package de.usd.cstchef.view;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.HashMap;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -36,7 +35,7 @@ public class PopupVariableMenu extends JPopupMenu implements ActionListener, Pop
         }
     }
 
-    public static void refresh(HashMap<String, ByteArray> variables) {
+    public static void refresh(TreeMap<String, ByteArray> variables) {
         if (variables == null) {
             variableMap = new TreeMap<String,ByteArray>();
         } else {
