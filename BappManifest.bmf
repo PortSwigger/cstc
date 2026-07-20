@@ -2,12 +2,12 @@ Uuid: 866df66d339d4bcd9b599772aff32efd
 ExtensionType: 1
 Name: CSTC, Modular HTTP Manipulator
 RepoName: cstc
-ScreenVersion: 1.3.6
-SerialVersion: 13
-MinPlatformVersion: 19
+ScreenVersion: 1.3.7
+SerialVersion: 14
+MinPlatformVersion: 28
 ProOnly: False
 Author: usdAG
 ShortDescription: Allows request/response modification using a GUI analogous to CyberChef
-EntryPoint: CSTC-1.3.6.jar
+EntryPoint: CSTC-1.3.7-jar-with-dependencies.jar
 BuildCommand: mvn package
 SupportedProducts: Pro, Community
